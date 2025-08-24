@@ -51,7 +51,7 @@
     const uploadFile = document.getElementById("uploadFile");
     const form = document.getElementById("meetingForm");
 
-    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";
+    const webhookUrl = "https://YOUR_N8N_HOST/webhook/meeting";
 
     // Start Recording
     startBtn.onclick = async () => {
@@ -138,3 +138,21 @@
       fd.append("file", audioBlob, "meeting_recording.webm");
 
       try {
+        const res = await fetch(webhookUrl, { method: "POST", body: fd });
+        if(res.ok){
+          alert("✅ ส่งข้อมูลไป n8n สำเร็จ!");
+          form.reset();
+          player.src = "";
+          audioBlob = null;
+          startBtn.disabled = false;
+        } else {
+          alert("❌ ส่งข้อมูลไม่สำเร็จ!");
+        }
+      } catch(err){
+        console.error(err);
+        alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+      }
+    };
+  </script>
+</body>
+</html>
