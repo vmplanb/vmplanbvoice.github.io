@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Voice Recorder → n8n</title>
+</head>
+<body>
+  <h2>🎤 Record Voice and Send to n8n</h2>
+  <button id="rec">Start Recording</button>
+  <button id="stop" disabled>Stop</button>
+  <audio controls></audio>
+
+  <script>
+    let recorder, chunks = [];
+    const btnR = document.getElementById("rec");
+    const btnS = document.getElementById("stop");
+    const aud  = document.querySelector("audio");
+
+    btnR.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      chunks = [];
+
+      recorder.ondataavailable = e => chunks.push(e.data);
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        aud.src = URL.createObjectURL(blob);
+
+        // ส่งไฟล์ไปยัง n8n Webhook
+        const fd = new FormData();
+        fd.append("file", blob, "voice.webm");
+
+        const res = await fetch("https://pb-n8n.planbmedia.co.th/webhook-test/voice", {
+          method: "POST",
+          body: fd
+        });
+
+        alert(res.ok ? "✅ ส่งไฟล์สำเร็จ" : "❌ ส่งไฟล์ไม่สำเร็จ");
+      };
+
+      recorder.start();
+      btnR.disabled = true;
+      btnS.disabled = false;
+    };
+
+    btnS.onclick = () => {
+      recorder.stop();
+      btnR.disabled = false;
+      btnS.disabled = true;
+    };
+  </script>
+</body>
+</html>
+
