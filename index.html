@@ -2,24 +2,36 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Voice Recorder → n8n</title>
+  <title>Meeting Voice Upload</title>
 </head>
 <body>
-  <h2>🎤 Record Voice and Send to n8n</h2>
+  <h2>📌 Meeting Voice Upload</h2>
+  
+  <form id="meetingForm">
+    <label>ID: <input type="text" id="userId" required></label><br><br>
+    <label>Name: <input type="text" id="userName" required></label><br><br>
+    <label>Email: <input type="email" id="userEmail" required></label><br><br>
 
-  <button id="startBtn">Start Recording</button>
-  <button id="stopBtn" disabled>Stop</button>
-  <audio id="player" controls></audio>
+    <button type="button" id="startBtn">Start Recording</button>
+    <button type="button" id="stopBtn" disabled>Stop</button><br><br>
+    <audio id="player" controls></audio><br><br>
+
+    <button type="submit">Submit to n8n</button>
+  </form>
 
   <script>
     let recorder, chunks = [];
+    let audioBlob = null;
+
     const startBtn = document.getElementById("startBtn");
     const stopBtn  = document.getElementById("stopBtn");
     const player   = document.getElementById("player");
+    const form     = document.getElementById("meetingForm");
 
-    // ใส่ URL Webhook ของคุณที่นี่
+    // ใส่ URL Webhook ของ n8n
     const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";
 
+    // Start Recording
     startBtn.onclick = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -28,25 +40,9 @@
 
         recorder.ondataavailable = e => chunks.push(e.data);
 
-        recorder.onstop = async () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
-          player.src = URL.createObjectURL(blob);
-
-          // สร้าง FormData ส่งไป n8n
-          const fd = new FormData();
-          fd.append("file", blob, "voice_recording.webm");
-
-          try {
-            const res = await fetch(webhookUrl, { method: "POST", body: fd });
-            if(res.ok){
-              alert("✅ ส่งไฟล์ไป n8n สำเร็จ!");
-            } else {
-              alert("❌ ส่งไฟล์ไป n8n ไม่สำเร็จ!");
-            }
-          } catch(err){
-            console.error(err);
-            alert("❌ เกิดข้อผิดพลาดในการส่งไฟล์");
-          }
+        recorder.onstop = () => {
+          audioBlob = new Blob(chunks, { type: "audio/webm" });
+          player.src = URL.createObjectURL(audioBlob);
         };
 
         recorder.start();
@@ -59,11 +55,56 @@
       }
     };
 
+    // Stop Recording
     stopBtn.onclick = () => {
       recorder.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
       console.log("Recording stopped.");
+    };
+
+    // Submit Form
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("userId").value.trim();
+      const name = document.getElementById("userName").value.trim();
+      const email = document.getElementById("userEmail").value.trim();
+
+      // ตรวจสอบ Email ต้องลงท้าย @planbmedia.co.th
+      if(!email.endsWith("@planbmedia.co.th")){
+        alert("Email ต้องลงท้าย @planbmedia.co.th");
+        return;
+      }
+
+      if(!audioBlob){
+        alert("กรุณาบันทึกเสียงก่อนส่ง");
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("ID", id);
+      fd.append("Name", name);
+      fd.append("Email", email);
+      fd.append("file", audioBlob, "meeting_recording.webm");
+
+      try {
+        const res = await fetch(webhookUrl, {
+          method: "POST",
+          body: fd
+        });
+        if(res.ok){
+          alert("✅ ส่งข้อมูลไป n8n สำเร็จ!");
+          form.reset();
+          player.src = "";
+          audioBlob = null;
+        } else {
+          alert("❌ ส่งข้อมูลไม่สำเร็จ!");
+        }
+      } catch(err){
+        console.error(err);
+        alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+      }
     };
   </script>
 </body>
