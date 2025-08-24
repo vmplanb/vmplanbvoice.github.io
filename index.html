@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Meeting Voice Upload</title>
   <style>
-    /* แอนิเมชันวงกลมกำลังบันทึก */
     #recordingIndicator {
       display: inline-block;
       width: 20px;
@@ -25,7 +24,7 @@
 </head>
 <body>
   <h2>📌 Meeting Voice Upload</h2>
-  
+
   <form id="meetingForm">
     <label>ID: <input type="text" id="userId" required></label><br><br>
     <label>Name: <input type="text" id="userName" required></label><br><br>
@@ -33,6 +32,8 @@
 
     <button type="button" id="startBtn">Start Recording</button>
     <span id="recordingIndicator"></span><br><br>
+
+    <label>Or upload audio file: <input type="file" id="uploadFile" accept="audio/*"></label><br><br>
 
     <audio id="player" controls></audio><br><br>
 
@@ -47,9 +48,9 @@
     const startBtn = document.getElementById("startBtn");
     const recordingIndicator = document.getElementById("recordingIndicator");
     const player = document.getElementById("player");
+    const uploadFile = document.getElementById("uploadFile");
     const form = document.getElementById("meetingForm");
 
-    // ใส่ URL Webhook ของ n8n
     const webhookUrl = "https://YOUR_N8N_HOST/webhook/meeting";
 
     // Start Recording
@@ -76,17 +77,25 @@
       }
     };
 
-    // Submit Form: หยุดบันทึก, เซฟไฟล์, ส่งไป n8n
+    // Upload file event
+    uploadFile.onchange = (e) => {
+      const file = e.target.files[0];
+      if(file){
+        audioBlob = file;
+        player.src = URL.createObjectURL(file);
+        // ถ้าอัพโหลดไฟล์ ใช้ recorder ไม่ต้องอัด
+        if(recorder && recorder.state === "recording"){
+          recorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+          recordingIndicator.style.visibility = "hidden";
+        }
+        startBtn.disabled = false;
+      }
+    };
+
+    // Submit Form
     form.onsubmit = async (e) => {
       e.preventDefault();
-
-      // หยุด recorder ถ้ายังบันทึกอยู่
-      if(recorder && recorder.state === "recording"){
-        recorder.stop();
-        recordingIndicator.style.visibility = "hidden";
-        // หยุด stream
-        stream.getTracks().forEach(track => track.stop());
-      }
 
       const id = document.getElementById("userId").value.trim();
       const name = document.getElementById("userName").value.trim();
@@ -97,12 +106,25 @@
         return;
       }
 
+      // ถ้ายัง Record อยู่ ให้ stop ก่อน
+      if(recorder && recorder.state === "recording"){
+        recorder.stop();
+        recordingIndicator.style.visibility = "hidden";
+        stream.getTracks().forEach(track => track.stop());
+        // รอให้ onstop สร้าง blob
+        await new Promise(resolve => recorder.onstop = () => {
+          audioBlob = new Blob(chunks, { type: "audio/webm" });
+          player.src = URL.createObjectURL(audioBlob);
+          resolve();
+        });
+      }
+
       if(!audioBlob){
-        alert("กรุณาบันทึกเสียงก่อนส่ง");
+        alert("กรุณาบันทึกหรืออัพโหลดเสียงก่อนส่ง");
         return;
       }
 
-      // เซฟไฟล์เสียงลงเครื่อง
+      // Save file locally
       const a = document.createElement("a");
       a.href = URL.createObjectURL(audioBlob);
       a.download = "meeting_recording.webm";
@@ -116,24 +138,3 @@
       fd.append("file", audioBlob, "meeting_recording.webm");
 
       try {
-        const res = await fetch(webhookUrl, {
-          method: "POST",
-          body: fd
-        });
-        if(res.ok){
-          alert("✅ ส่งข้อมูลไป n8n สำเร็จ!");
-          form.reset();
-          player.src = "";
-          audioBlob = null;
-          startBtn.disabled = false;
-        } else {
-          alert("❌ ส่งข้อมูลไม่สำเร็จ!");
-        }
-      } catch(err){
-        console.error(err);
-        alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
-      }
-    };
-  </script>
-</body>
-</html>
