@@ -1,169 +1,439 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Meeting Voice Upload</title>
   <style>
-    #recordingIndicator {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background-color: red;
-      margin-left: 10px;
-      visibility: hidden;
-      animation: pulse 1s infinite;
+    :root{
+      --bg:#0f172a;       /* slate-900 */
+      --card:#111827;     /* gray-900 */
+      --muted:#94a3b8;    /* slate-400 */
+      --text:#e5e7eb;     /* gray-200 */
+      --primary:#22c55e;  /* green-500 */
+      --primary-600:#16a34a;
+      --danger:#ef4444;
+      --accent:#38bdf8;   /* sky-400 */
+      --ring:#22c55e40;
+      --shadow: 0 20px 40px rgba(0,0,0,.35);
+      --radius: 16px;
     }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 600px at 100% -10%, #0ea5e930 0%, transparent 60%),
+        radial-gradient(1000px 600px at -10% 100%, #22c55e25 0%, transparent 60%),
+        var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      line-height:1.6;
+      display:flex; align-items:center; justify-content:center; padding:32px;
+    }
+    .card{
+      width:100%; max-width:860px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(6px);
+      overflow:hidden;
+    }
+    .header{
+      padding:28px 28px 8px;
+    }
+    h1{margin:0 0 6px;font-size:26px;letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:14px}
+    .content{padding:20px 28px 28px; display:grid; gap:18px}
+    .grid{display:grid; gap:16px}
+    @media (min-width:720px){ .grid{ grid-template-columns:1fr 1fr; } }
 
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.5); opacity: 0.5; }
-      100% { transform: scale(1); opacity: 1; }
+    label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px}
+    input[type="text"], input[type="email"]{
+      width:100%; padding:12px 14px; border-radius:12px;
+      background:#0b1222; color:var(--text);
+      border:1px solid rgba(255,255,255,.08);
+      outline:none; transition:.2s;
     }
+    input:focus{ border-color:var(--accent); box-shadow:0 0 0 6px rgba(56,189,248,.12); }
+
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      border:0; border-radius:12px; padding:12px 16px; font-weight:600;
+      background:#0b1222; color:var(--text); cursor:pointer; transition:.2s;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .btn:hover{ transform:translateY(-1px); }
+    .btn:disabled{ opacity:.5; cursor:not-allowed; transform:none }
+    .btn-primary{ background:linear-gradient(180deg, var(--primary), var(--primary-600)); border:0; color:white; }
+    .btn-outline{ border:1px dashed rgba(255,255,255,.25); }
+    .hint{ font-size:12px; color:var(--muted) }
+
+    .rec-box{
+      padding:16px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    }
+    .indicator{
+      display:inline-flex; align-items:center; gap:10px; min-height:28px;
+      font-weight:600; letter-spacing:.3px;
+    }
+    .dot{
+      width:12px; height:12px; border-radius:999px; background:var(--danger);
+      box-shadow:0 0 0 0 rgba(239, 68, 68, .7);
+      animation: pulse 1.2s infinite;
+      display:none;
+    }
+    .dot.active{ display:inline-block; }
+    @keyframes pulse {
+      0% { box-shadow:0 0 0 0 rgba(239,68,68,.7); transform:scale(1)}
+      70%{ box-shadow:0 0 0 12px rgba(239,68,68,0); transform:scale(1.06)}
+      100%{ box-shadow:0 0 0 0 rgba(239,68,68,0); transform:scale(1)}
+    }
+    .eq{
+      display:inline-flex; gap:3px; height:16px; align-items:flex-end;
+      margin-left:4px; opacity:.9; display:none;
+    }
+    .bar{ width:3px; background:linear-gradient(180deg, #f43f5e, #fb7185); border-radius:2px; animation: bounce 1s infinite ease-in-out; }
+    .bar:nth-child(2){ animation-delay:.1s }
+    .bar:nth-child(3){ animation-delay:.2s }
+    .bar:nth-child(4){ animation-delay:.3s }
+    @keyframes bounce{
+      0%,100%{ height:4px }
+      50%{ height:16px }
+    }
+    .eq.active{ display:inline-flex }
+
+    .audio-wrap{
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b1222; border-radius:12px; padding:12px;
+    }
+    audio{ width:100% }
+
+    .uploader{
+      padding:14px; border:1px dashed rgba(255,255,255,.2);
+      border-radius:14px; display:flex; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap;
+    }
+    .uploader input{ display:none }
+    .uploader .name{ color:var(--muted); font-size:13px }
+
+    .footer{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-top:4px;
+    }
+    .left{ display:flex; gap:10px; align-items:center }
+    .spinner{ width:16px; height:16px; border:3px solid rgba(255,255,255,.25); border-top-color:#fff; border-radius:50%; animation:spin 1s linear infinite; display:none }
+    @keyframes spin { to { transform:rotate(360deg) } }
+
+    .badge{ font-size:11px; padding:4px 8px; border-radius:999px; background:#0b1222; border:1px solid rgba(255,255,255,.1); color:var(--muted) }
+    .toast{
+      position:fixed; right:18px; bottom:18px; padding:12px 14px; border-radius:12px;
+      background:#052e2b; color:#a7f3d0; border:1px solid #064e3b; box-shadow:var(--shadow); display:none
+    }
+    .toast.error{ background:#3a0c0c; color:#fecaca; border-color:#7f1d1d }
   </style>
 </head>
 <body>
-  <h2>📌 Meeting Voice Upload</h2>
+  <div class="card">
+    <div class="header">
+      <h1>📌 Meeting Voice Upload</h1>
+      <div class="sub">บันทึก/อัพโหลดไฟล์เสียงการประชุม ใส่ข้อมูลผู้ส่ง และส่งไปยัง n8n</div>
+    </div>
 
-  <form id="meetingForm">
-    <label>ID: <input type="text" id="userId" required></label><br><br>
-    <label>Name: <input type="text" id="userName" required></label><br><br>
-    <label>Email: <input type="email" id="userEmail" required></label><br><br>
+    <form id="meetingForm" class="content" novalidate>
+      <div class="grid">
+        <div>
+          <label for="userId">ID</label>
+          <input id="userId" type="text" required placeholder="เช่น EMP-00123" />
+        </div>
+        <div>
+          <label for="userName">Name</label>
+          <input id="userName" type="text" required placeholder="ชื่อ-นามสกุล" />
+        </div>
+        <div>
+          <label for="userEmail">Email (ต้องเป็น @planbmedia.co.th)</label>
+          <input id="userEmail" type="email" required placeholder="name@planbmedia.co.th" />
+          <div class="hint">ระบบจะตรวจสอบโดเมนอีเมลอัตโนมัติ</div>
+        </div>
+        <div>
+          <label>สถานะการบันทึก</label>
+          <div class="rec-box">
+            <div class="row">
+              <button type="button" id="startBtn" class="btn">🎙️ Start Recording</button>
+              <span class="indicator"><span id="dot" class="dot"></span><span id="recText">ยังไม่ได้บันทึก</span>
+                <span id="eq" class="eq" aria-hidden="true">
+                  <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+                </span>
+              </span>
+              <span id="timer" class="badge">00:00</span>
+            </div>
+            <div class="hint" style="margin-top:6px">ระหว่างอัดเสียง ให้กด <strong>Save and Submit</strong> เพื่อหยุดอัตโนมัติและส่งไฟล์</div>
+          </div>
+        </div>
+      </div>
 
-    <button type="button" id="startBtn">Start Recording</button>
-    <span id="recordingIndicator"></span><br><br>
+      <div>
+        <label>อัพโหลดไฟล์เสียง (ทางเลือก)</label>
+        <div class="uploader">
+          <div class="left">
+            <label for="uploadFile" class="btn btn-outline">⬆️ เลือกไฟล์เสียง</label>
+            <span id="fileName" class="name">ยังไม่ได้เลือกไฟล์</span>
+          </div>
+          <input type="file" id="uploadFile" accept="audio/*" />
+          <span class="badge">รองรับ: mp3, m4a, wav, webm ฯลฯ</span>
+        </div>
+      </div>
 
-    <label>Or upload audio file: <input type="file" id="uploadFile" accept="audio/*"></label><br><br>
+      <div>
+        <label>ตัวอย่างเสียง</label>
+        <div class="audio-wrap">
+          <audio id="player" controls preload="metadata"></audio>
+        </div>
+      </div>
 
-    <audio id="player" controls></audio><br><br>
+      <div class="footer">
+        <div class="left">
+          <div id="spinner" class="spinner" role="status" aria-label="กำลังส่ง"></div>
+          <span class="hint">เมื่อกดบันทึกและส่ง ระบบจะดาวน์โหลดไฟล์ (ถ้าเป็นการอัดเสียง) และส่งไปยัง n8n</span>
+        </div>
+        <button type="submit" id="submitBtn" class="btn btn-primary">💾 Save and Submit</button>
+      </div>
+    </form>
+  </div>
 
-    <button type="submit">Save and Submit</button>
-  </form>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    let recorder, chunks = [];
+    // ---------- Config ----------
+    const WEBHOOK_URL = "https://pb-n8n.planbmedia.co.th/webhook/voice"; // <-- เปลี่ยนเป็น URL ของคุณ
+
+    // ---------- State ----------
+    let recorder, mediaStream = null, chunks = [];
     let audioBlob = null;
-    let stream = null;
     let isRecording = false;
     let isUploadedFile = false;
+    let timerInterval = null, seconds = 0;
 
+    // ---------- Elements ----------
+    const form = document.getElementById("meetingForm");
     const startBtn = document.getElementById("startBtn");
-    const recordingIndicator = document.getElementById("recordingIndicator");
+    const submitBtn = document.getElementById("submitBtn");
+    const spinner = document.getElementById("spinner");
     const player = document.getElementById("player");
     const uploadFile = document.getElementById("uploadFile");
-    const form = document.getElementById("meetingForm");
+    const fileNameEl = document.getElementById("fileName");
+    const dot = document.getElementById("dot");
+    const eq = document.getElementById("eq");
+    const recText = document.getElementById("recText");
+    const timerEl = document.getElementById("timer");
+    const toast = document.getElementById("toast");
 
-    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook/voice";
+    // ---------- Utils ----------
+    const showToast = (msg, isError=false)=>{
+      toast.textContent = msg;
+      toast.className = "toast" + (isError ? " error" : "");
+      toast.style.display = "block";
+      setTimeout(()=> toast.style.display = "none", 3200);
+    };
 
-    // Start Recording
-    startBtn.onclick = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recorder = new MediaRecorder(stream);
+    const validateEmail = (email) => {
+      return /^[^\s@]+@planbmedia\.co\.th$/i.test(email);
+    };
+
+    const startTimer = ()=>{
+      seconds = 0;
+      timerEl.textContent = "00:00";
+      timerInterval = setInterval(()=>{
+        seconds++;
+        const m = String(Math.floor(seconds/60)).padStart(2,'0');
+        const s = String(seconds%60).padStart(2,'0');
+        timerEl.textContent = `${m}:${s}`;
+      },1000);
+    };
+
+    const stopTimer = ()=>{
+      clearInterval(timerInterval);
+      timerInterval = null;
+    };
+
+    const stopAllTracks = ()=>{
+      if(mediaStream){
+        mediaStream.getTracks().forEach(t=>t.stop());
+        mediaStream = null;
+      }
+    };
+
+    const downloadBlob = (blob, name)=>{
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=> URL.revokeObjectURL(a.href), 0);
+    };
+
+    const toNiceFilename = (base, ext)=> {
+      const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+      return `${base}_${stamp}.${ext}`;
+    };
+
+    const setRecUI = (active)=>{
+      if(active){
+        dot.classList.add("active");
+        eq.classList.add("active");
+        recText.textContent = "กำลังบันทึก...";
+        startBtn.disabled = true;
+        startTimer();
+      }else{
+        dot.classList.remove("active");
+        eq.classList.remove("active");
+        if(audioBlob){
+          recText.textContent = "บันทึกเสร็จแล้ว";
+        }else{
+          recText.textContent = "ยังไม่ได้บันทึก";
+        }
+        startBtn.disabled = false;
+        stopTimer();
+      }
+    };
+
+    // ---------- Recording ----------
+    startBtn.addEventListener("click", async ()=>{
+      try{
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+        recorder = new MediaRecorder(mediaStream);
         chunks = [];
         isRecording = true;
         isUploadedFile = false;
+        setRecUI(true);
 
-        recorder.ondataavailable = e => chunks.push(e.data);
-
-        recorder.onstop = () => {
-          audioBlob = new Blob(chunks, { type: "audio/webm" });
+        recorder.addEventListener("dataavailable", e => { if(e.data?.size) chunks.push(e.data); });
+        recorder.addEventListener("stop", ()=>{
+          audioBlob = new Blob(chunks, { type:"audio/webm" });
           player.src = URL.createObjectURL(audioBlob);
           isRecording = false;
-        };
+          setRecUI(false);
+        });
 
         recorder.start();
-        startBtn.disabled = true;
-        recordingIndicator.style.visibility = "visible";
-        console.log("Recording started...");
-      } catch(err) {
-        alert("ไม่สามารถเปิดไมค์ได้: " + err.message);
+      }catch(err){
         console.error(err);
+        showToast("เปิดไมโครโฟนไม่สำเร็จ: " + err.message, true);
       }
-    };
+    });
 
-    // Upload file event
-    uploadFile.onchange = (e) => {
-      const file = e.target.files[0];
+    // ---------- Upload ----------
+    uploadFile.addEventListener("change", (e)=>{
+      const file = e.target.files?.[0];
       if(file){
-        audioBlob = file;
-        player.src = URL.createObjectURL(file);
+        audioBlob = file; // ใช้ไฟล์เดิม (ไม่สร้างซ้ำ)
         isUploadedFile = true;
-        // ถ้ากำลัง record อยู่ ให้หยุด
-        if(isRecording && recorder){
-          recorder.stop();
-          stream.getTracks().forEach(track => track.stop());
-          recordingIndicator.style.visibility = "hidden";
-        }
-        startBtn.disabled = false;
-      }
-    };
+        fileNameEl.textContent = file.name;
+        player.src = URL.createObjectURL(file);
 
-    // Submit Form
-    form.onsubmit = async (e) => {
+        if(isRecording && recorder){
+          recorder.stop(); // จะไป trigger onstop ของ recorder
+        }
+        stopAllTracks();
+        setRecUI(false);
+      }else{
+        fileNameEl.textContent = "ยังไม่ได้เลือกไฟล์";
+        isUploadedFile = false;
+      }
+    });
+
+    // ---------- Submit ----------
+    form.addEventListener("submit", async (e)=>{
       e.preventDefault();
 
       const id = document.getElementById("userId").value.trim();
       const name = document.getElementById("userName").value.trim();
       const email = document.getElementById("userEmail").value.trim();
 
-      if(!email.endsWith("@planbmedia.co.th")){
-        alert("Email ต้องลงท้าย @planbmedia.co.th");
+      if(!id || !name || !email){
+        showToast("กรอกข้อมูลให้ครบก่อนส่ง", true);
+        return;
+      }
+      if(!validateEmail(email)){
+        showToast("อีเมลต้องเป็น @planbmedia.co.th เท่านั้น", true);
         return;
       }
 
-      // ถ้า Record กำลังทำงานอยู่ ให้หยุดก่อน
-      if(isRecording && recorder){
-        recorder.stop();
-        recordingIndicator.style.visibility = "hidden";
-        stream.getTracks().forEach(track => track.stop());
-        await new Promise(resolve => {
-          recorder.onstop = () => {
-            audioBlob = new Blob(chunks, { type: "audio/webm" });
+      // ถ้ายังอัดอยู่ ให้หยุดก่อนแล้วรอ blob
+      if(isRecording && recorder?.state === "recording"){
+        await new Promise(resolve=>{
+          const finalize = ()=>{
+            audioBlob = new Blob(chunks, { type:"audio/webm" });
             player.src = URL.createObjectURL(audioBlob);
             isRecording = false;
+            setRecUI(false);
+            stopAllTracks();
             resolve();
           };
+          recorder.addEventListener("stop", finalize, { once:true });
+          recorder.stop();
         });
       }
 
       if(!audioBlob){
-        alert("กรุณาบันทึกหรืออัพโหลดเสียงก่อนส่ง");
+        showToast("กรุณาอัดเสียงหรืออัพโหลดไฟล์ก่อนส่ง", true);
         return;
       }
 
-      // Save local เฉพาะกรณีอัดเสียงเอง
-      if(!isUploadedFile){
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(audioBlob);
-        a.download = "meeting_recording.webm";
-        a.click();
-      }
+      // UI lock
+      submitBtn.disabled = true;
+      spinner.style.display = "inline-block";
 
-      // ส่งไป n8n
-      const fd = new FormData();
-      fd.append("ID", id);
-      fd.append("Name", name);
-      fd.append("Email", email);
-      fd.append("file", audioBlob, "meeting_recording.webm");
+      try{
+        // ดาวน์โหลดไฟล์เฉพาะกรณีอัดเสียงเอง
+        if(!isUploadedFile){
+          const filename = toNiceFilename("meeting_recording", "webm");
+          downloadBlob(audioBlob, filename);
+        }
 
-      try {
-        const res = await fetch(webhookUrl, { method: "POST", body: fd });
+        // เตรียมส่งไป n8n
+        const fd = new FormData();
+        fd.append("ID", id);
+        fd.append("Name", name);
+        fd.append("Email", email);
+
+        // ตั้งชื่อไฟล์: ใช้ชื่อเดิมถ้าอัพโหลด, ถ้าอัดเองใช้ webm + timestamp
+        const uploadName = isUploadedFile
+          ? (audioBlob.name || toNiceFilename("uploaded_audio","webm"))
+          : toNiceFilename("meeting_recording","webm");
+
+        fd.append("file", audioBlob, uploadName);
+
+        const res = await fetch(WEBHOOK_URL, { method:"POST", body:fd });
+
+        // อ่าน response เป็น text แล้วพยายาม parse JSON เพื่อกัน error 500 ที่ไม่ใช่ JSON
+        const raw = await res.text();
+        let data;
+        try{ data = JSON.parse(raw); }catch{ data = { status: res.ok ? "ok":"error", raw }; }
+
         if(res.ok){
-          alert("✅ ส่งข้อมูลไป n8n สำเร็จ!");
+          showToast("ส่งข้อมูลไป n8n สำเร็จ ✅");
+          // reset ฟอร์ม
           form.reset();
           player.src = "";
           audioBlob = null;
           isUploadedFile = false;
-          startBtn.disabled = false;
-        } else {
-          alert("❌ ส่งข้อมูลไม่สำเร็จ!");
+          fileNameEl.textContent = "ยังไม่ได้เลือกไฟล์";
+        }else{
+          console.error("n8n error:", data);
+          showToast("ส่งข้อมูลไม่สำเร็จ: " + (data?.message || res.status), true);
         }
-      } catch(err){
+      }catch(err){
         console.error(err);
-        alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+        showToast("เกิดข้อผิดพลาดในการส่งข้อมูล: " + err.message, true);
+      }finally{
+        submitBtn.disabled = false;
+        spinner.style.display = "none";
       }
-    };
+    });
   </script>
 </body>
 </html>
