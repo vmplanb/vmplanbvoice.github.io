@@ -6,155 +6,76 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f9;
+      background: #f5f7fa;
       display: flex;
       justify-content: center;
-      padding: 40px;
+      padding: 30px;
     }
-    .card {
-      background: white;
+    .container {
+      background: #fff;
       padding: 25px;
-      border-radius: 15px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
       width: 420px;
     }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 15px;
-    }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+    h2 { text-align: center; color: #333; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input[type="text"], input[type="email"], input[type="file"] {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border: 1px solid #ccc; border-radius: 6px;
     }
     button {
-      margin-top: 15px;
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      cursor: pointer;
+      margin-top: 20px;
+      width: 100%; padding: 12px;
+      background: #007bff; color: white;
+      border: none; border-radius: 6px;
+      cursor: pointer; font-size: 16px;
     }
-    .recording {
-      background: #e74c3c;
-      color: white;
-      animation: pulse 1.2s infinite;
-    }
-    .normal {
-      background: #3498db;
-      color: white;
-    }
-    .submit {
-      background: #2ecc71;
-      color: white;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(231,76,60,0.7); }
-      70% { box-shadow: 0 0 0 12px rgba(231,76,60,0); }
-      100% { box-shadow: 0 0 0 0 rgba(231,76,60,0); }
-    }
-    audio {
-      margin-top: 15px;
-      width: 100%;
-    }
+    button:hover { background: #0056b3; }
+    #status { margin-top: 15px; text-align: center; color: #555; }
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="container">
     <h2>📌 Meeting Voice Upload</h2>
     <form id="meetingForm">
-      <label>ID:</label>
+      <label>ID</label>
       <input type="text" id="userId" required>
 
-      <label>Name:</label>
+      <label>Name</label>
       <input type="text" id="userName" required>
 
-      <label>Email:</label>
-      <input type="email" id="userEmail" required placeholder="example@planbmedia.co.th">
+      <label>Email</label>
+      <input type="email" id="userEmail" required>
 
-      <label>Record Voice:</label>
-      <button type="button" id="recordBtn" class="normal">🎙 Start Recording</button>
-      <audio id="player" controls></audio>
+      <label>Upload Meeting Audio</label>
+      <input type="file" id="audioFile" accept="audio/*" required>
 
-      <label>Or Upload File:</label>
-      <input type="file" id="uploadFile" accept="audio/*">
-
-      <button type="submit" class="submit">💾 Save and Submit</button>
+      <button type="submit">💾 Save & Submit</button>
+      <p id="status"></p>
     </form>
   </div>
 
   <script>
-    let recorder, chunks = [];
-    let audioBlob = null;
-
-    const recordBtn = document.getElementById("recordBtn");
-    const player    = document.getElementById("player");
-    const uploadFile= document.getElementById("uploadFile");
-    const form      = document.getElementById("meetingForm");
+    const form = document.getElementById("meetingForm");
+    const statusText = document.getElementById("status");
 
     const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook/voice";
 
-    // 🎙 Start/Stop Recording
-    recordBtn.onclick = async () => {
-      if(recordBtn.classList.contains("recording")) {
-        recorder.stop();
-        recordBtn.textContent = "🎙 Start Recording";
-        recordBtn.classList.remove("recording");
-        recordBtn.classList.add("normal");
-      } else {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          recorder = new MediaRecorder(stream);
-          chunks = [];
-          recorder.ondataavailable = e => chunks.push(e.data);
-          recorder.onstop = () => {
-            audioBlob = new Blob(chunks, { type: "audio/webm" });
-            player.src = URL.createObjectURL(audioBlob);
-            uploadFile.value = ""; // reset upload
-          };
-          recorder.start();
-          recordBtn.textContent = "⏹ Stop Recording";
-          recordBtn.classList.remove("normal");
-          recordBtn.classList.add("recording");
-        } catch(err) {
-          alert("ไม่สามารถเปิดไมค์ได้: " + err.message);
-        }
-      }
-    };
-
-    // 📂 Upload File Handler
-    uploadFile.onchange = () => {
-      if(uploadFile.files.length > 0){
-        audioBlob = uploadFile.files[0];
-        player.src = URL.createObjectURL(audioBlob);
-        recordBtn.textContent = "🎙 Start Recording";
-        recordBtn.classList.remove("recording");
-        recordBtn.classList.add("normal");
-      }
-    };
-
-    // 🚀 Submit Form
     form.onsubmit = async (e) => {
       e.preventDefault();
 
       const id = document.getElementById("userId").value.trim();
       const name = document.getElementById("userName").value.trim();
       const email = document.getElementById("userEmail").value.trim();
+      const file = document.getElementById("audioFile").files[0];
 
       if(!email.endsWith("@planbmedia.co.th")){
-        alert("❌ Email ต้องลงท้ายด้วย @planbmedia.co.th");
+        alert("❌ Email ต้องลงท้าย @planbmedia.co.th");
         return;
       }
-      if(!audioBlob){
-        alert("❌ กรุณาอัดเสียงหรืออัพโหลดไฟล์ก่อนส่ง");
+      if(!file){
+        alert("❌ กรุณาเลือกไฟล์เสียงก่อนส่ง");
         return;
       }
 
@@ -162,21 +83,21 @@
       fd.append("ID", id);
       fd.append("Name", name);
       fd.append("Email", email);
-      fd.append("file", audioBlob, audioBlob.name || "meeting_recording.webm");
+      fd.append("file", file, file.name);
+
+      statusText.innerText = "⏳ กำลังอัพโหลด...";
 
       try {
         const res = await fetch(webhookUrl, { method: "POST", body: fd });
-        const text = await res.text(); // ✅ ไม่ parse เป็น JSON ตรง ๆ
         if(res.ok){
-          alert("✅ ส่งข้อมูลไป n8n สำเร็จ!\nResponse: " + text);
+          statusText.innerText = "✅ ส่งข้อมูลสำเร็จ!";
           form.reset();
-          player.src = "";
-          audioBlob = null;
         } else {
-          alert("❌ ส่งข้อมูลไม่สำเร็จ!\nResponse: " + text);
+          const err = await res.text();
+          statusText.innerText = "❌ Error: " + err;
         }
       } catch(err){
-        alert("❌ Error: " + err.message);
+        statusText.innerText = "❌ Network Error: " + err.message;
       }
     };
   </script>
