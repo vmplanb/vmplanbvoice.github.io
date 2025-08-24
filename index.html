@@ -44,6 +44,8 @@
     let recorder, chunks = [];
     let audioBlob = null;
     let stream = null;
+    let isRecording = false;
+    let isUploadedFile = false;
 
     const startBtn = document.getElementById("startBtn");
     const recordingIndicator = document.getElementById("recordingIndicator");
@@ -51,7 +53,7 @@
     const uploadFile = document.getElementById("uploadFile");
     const form = document.getElementById("meetingForm");
 
-    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";
+    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook/voice";
 
     // Start Recording
     startBtn.onclick = async () => {
@@ -59,12 +61,15 @@
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         recorder = new MediaRecorder(stream);
         chunks = [];
+        isRecording = true;
+        isUploadedFile = false;
 
         recorder.ondataavailable = e => chunks.push(e.data);
 
         recorder.onstop = () => {
           audioBlob = new Blob(chunks, { type: "audio/webm" });
           player.src = URL.createObjectURL(audioBlob);
+          isRecording = false;
         };
 
         recorder.start();
@@ -83,8 +88,9 @@
       if(file){
         audioBlob = file;
         player.src = URL.createObjectURL(file);
-        // ถ้าอัพโหลดไฟล์ ใช้ recorder ไม่ต้องอัด
-        if(recorder && recorder.state === "recording"){
+        isUploadedFile = true;
+        // ถ้ากำลัง record อยู่ ให้หยุด
+        if(isRecording && recorder){
           recorder.stop();
           stream.getTracks().forEach(track => track.stop());
           recordingIndicator.style.visibility = "hidden";
@@ -106,16 +112,18 @@
         return;
       }
 
-      // ถ้ายัง Record อยู่ ให้ stop ก่อน
-      if(recorder && recorder.state === "recording"){
+      // ถ้า Record กำลังทำงานอยู่ ให้หยุดก่อน
+      if(isRecording && recorder){
         recorder.stop();
         recordingIndicator.style.visibility = "hidden";
         stream.getTracks().forEach(track => track.stop());
-        // รอให้ onstop สร้าง blob
-        await new Promise(resolve => recorder.onstop = () => {
-          audioBlob = new Blob(chunks, { type: "audio/webm" });
-          player.src = URL.createObjectURL(audioBlob);
-          resolve();
+        await new Promise(resolve => {
+          recorder.onstop = () => {
+            audioBlob = new Blob(chunks, { type: "audio/webm" });
+            player.src = URL.createObjectURL(audioBlob);
+            isRecording = false;
+            resolve();
+          };
         });
       }
 
@@ -124,11 +132,13 @@
         return;
       }
 
-      // Save file locally
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(audioBlob);
-      a.download = "meeting_recording.webm";
-      a.click();
+      // Save local เฉพาะกรณีอัดเสียงเอง
+      if(!isUploadedFile){
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(audioBlob);
+        a.download = "meeting_recording.webm";
+        a.click();
+      }
 
       // ส่งไป n8n
       const fd = new FormData();
@@ -144,6 +154,7 @@
           form.reset();
           player.src = "";
           audioBlob = null;
+          isUploadedFile = false;
           startBtn.disabled = false;
         } else {
           alert("❌ ส่งข้อมูลไม่สำเร็จ!");
