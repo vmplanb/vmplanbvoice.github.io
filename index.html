@@ -1,46 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Voice Recorder Test</title>
-</head>
-<body>
-  <h2>🎤 Voice Recorder Test</h2>
-  <button id="startBtn">Start Recording</button>
-  <button id="stopBtn" disabled>Stop</button>
-  <audio id="player" controls></audio>
+<script>
+  // หลังจาก stop recorder
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    audio.src = URL.createObjectURL(blob);
 
-  <script>
-    let recorder, chunks = [];
+    // สร้าง FormData
+    const fd = new FormData();
+    fd.append("file", blob, "voice_recording.webm");
 
-    document.getElementById("startBtn").onclick = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recorder = new MediaRecorder(stream);
-        chunks = [];
+    // ใส่ URL ของ Webhook ที่ได้จาก n8n
+    const webhookUrl = "https://YOUR_N8N_HOST/webhook/voice";
 
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
-          document.getElementById("player").src = URL.createObjectURL(blob);
-        };
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        body: fd
+      });
 
-        recorder.start();
-        document.getElementById("startBtn").disabled = true;
-        document.getElementById("stopBtn").disabled = false;
-        console.log("Recording started...");
-      } catch (err) {
-        alert("Microphone error: " + err.message);
-        console.error(err);
+      if(res.ok){
+        alert("✅ ส่งไฟล์ไป n8n สำเร็จ!");
+      } else {
+        alert("❌ ส่งไฟล์ไป n8n ไม่สำเร็จ!");
       }
-    };
-
-    document.getElementById("stopBtn").onclick = () => {
-      recorder.stop();
-      document.getElementById("startBtn").disabled = false;
-      document.getElementById("stopBtn").disabled = true;
-      console.log("Recording stopped.");
-    };
-  </script>
-</body>
-</html>
+    } catch(err){
+      console.error(err);
+      alert("❌ เกิดข้อผิดพลาดในการส่งไฟล์");
+    }
+  };
+</script>
