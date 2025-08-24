@@ -9,7 +9,7 @@
     fd.append("file", blob, "voice_recording.webm");
 
     // ใส่ URL ของ Webhook ที่ได้จาก n8n
-    const webhookUrl = "https://YOUR_N8N_HOST/webhook/voice";
+    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";
 
     try {
       const res = await fetch(webhookUrl, {
