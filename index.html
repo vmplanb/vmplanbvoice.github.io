@@ -1,104 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Meeting Voice Upload</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      display: flex;
-      justify-content: center;
-      padding: 30px;
-    }
-    .container {
-      background: #fff;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-      width: 420px;
-    }
-    h2 { text-align: center; color: #333; }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input[type="text"], input[type="email"], input[type="file"] {
-      width: 100%; padding: 10px; margin-top: 5px;
-      border: 1px solid #ccc; border-radius: 6px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%; padding: 12px;
-      background: #007bff; color: white;
-      border: none; border-radius: 6px;
-      cursor: pointer; font-size: 16px;
-    }
-    button:hover { background: #0056b3; }
-    #status { margin-top: 15px; text-align: center; color: #555; }
-  </style>
+  <title>Voice Recorder → n8n</title>
 </head>
 <body>
-  <div class="container">
-    <h2>📌 Meeting Voice Upload</h2>
-    <form id="meetingForm">
-      <label>ID</label>
-      <input type="text" id="userId" required>
-
-      <label>Name</label>
-      <input type="text" id="userName" required>
-
-      <label>Email</label>
-      <input type="email" id="userEmail" required>
-
-      <label>Upload Meeting Audio</label>
-      <input type="file" id="audioFile" accept="audio/*" required>
-
-      <button type="submit">💾 Save & Submit</button>
-      <p id="status"></p>
-    </form>
-  </div>
+  <h2>🎤 Record Voice and Send to n8n</h2>
+  <button id="rec">Start Recording</button>
+  <button id="stop" disabled>Stop</button>
+  <audio controls></audio>
 
   <script>
-    const form = document.getElementById("meetingForm");
-    const statusText = document.getElementById("status");
+    let recorder, chunks = [];
+    const btnR = document.getElementById("rec");
+    const btnS = document.getElementById("stop");
+    const aud  = document.querySelector("audio");
 
-    const webhookUrl = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";
+    btnR.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      chunks = [];
 
-    form.onsubmit = async (e) => {
-      e.preventDefault();
+      recorder.ondataavailable = e => chunks.push(e.data);
 
-      const id = document.getElementById("userId").value.trim();
-      const name = document.getElementById("userName").value.trim();
-      const email = document.getElementById("userEmail").value.trim();
-      const file = document.getElementById("audioFile").files[0];
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        aud.src = URL.createObjectURL(blob);
 
-      if(!email.endsWith("@planbmedia.co.th")){
-        alert("❌ Email ต้องลงท้าย @planbmedia.co.th");
-        return;
-      }
-      if(!file){
-        alert("❌ กรุณาเลือกไฟล์เสียงก่อนส่ง");
-        return;
-      }
+        // ส่งไฟล์ไปยัง n8n Webhook
+        const fd = new FormData();
+        fd.append("file", blob, "voice.webm");
 
-      const fd = new FormData();
-      fd.append("ID", id);
-      fd.append("Name", name);
-      fd.append("Email", email);
-      fd.append("file", file, file.name);
+        const res = await fetch("https://pb-n8n.planbmedia.co.th/webhook-test/voice", {
+          method: "POST",
+          body: fd
+        });
 
-      statusText.innerText = "⏳ กำลังอัพโหลด...";
+        alert(res.ok ? "✅ ส่งไฟล์สำเร็จ" : "❌ ส่งไฟล์ไม่สำเร็จ");
+      };
 
-      try {
-        const res = await fetch(webhookUrl, { method: "POST", body: fd });
-        if(res.ok){
-          statusText.innerText = "✅ ส่งข้อมูลสำเร็จ!";
-          form.reset();
-        } else {
-          const err = await res.text();
-          statusText.innerText = "❌ Error: " + err;
-        }
-      } catch(err){
-        statusText.innerText = "❌ Network Error: " + err.message;
-      }
+      recorder.start();
+      btnR.disabled = true;
+      btnS.disabled = false;
+    };
+
+    btnS.onclick = () => {
+      recorder.stop();
+      btnR.disabled = false;
+      btnS.disabled = true;
     };
   </script>
 </body>
