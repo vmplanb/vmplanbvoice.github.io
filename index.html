@@ -11,6 +11,7 @@ body { font-family: Arial; display: flex; flex-direction: column; align-items: c
 #recordButton.recording::after{content:'';position:absolute;top:-10px;left:-10px;width:140px;height:140px;border-radius:50%;border:2px solid red;animation:pulse 1s infinite;}
 @keyframes pulse{0%{transform:scale(1);opacity:0.7}50%{transform:scale(1.2);opacity:0.3}100%{transform:scale(1);opacity:0.7}}
 #timer{font-size:18px;margin-bottom:10px;}
+#loading{display:none;margin:10px;font-weight:bold;color:#555;animation:pulse 1s infinite;}
 #chat{width:500px;max-height:450px;border:1px solid #ccc;border-radius:10px;overflow-y:auto;padding:15px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
 .message{margin:10px 0;padding:12px 15px;border-radius:10px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;max-width:85%;}
 .user{background:#daf1fc;text-align:right;align-self:flex-end;}
@@ -25,6 +26,7 @@ body { font-family: Arial; display: flex; flex-direction: column; align-items: c
 <button id="recordButton">Record</button>
 <input type="file" id="fileInput" style="display:none" accept="audio/*">
 <button id="uploadButton">Upload Audio</button>
+<div id="loading">⏳ กำลังส่ง...</div>
 <div id="chat"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
@@ -34,11 +36,13 @@ const uploadButton = document.getElementById('uploadButton');
 const fileInput = document.getElementById('fileInput');
 const chat = document.getElementById('chat');
 const timerEl = document.getElementById('timer');
+const loadingEl = document.getElementById('loading');
 
 let mediaRecorder, audioChunks=[], recording=false, startTime, timerInterval;
 let audioContext;
 const MAX_RECORD_SEC = 300; // 5 นาที
 
+// ==== Record ====
 recordButton.addEventListener('click', async ()=>{
   if(!recording){
     const stream = await navigator.mediaDevices.getUserMedia({audio:true});
@@ -49,10 +53,13 @@ recordButton.addEventListener('click', async ()=>{
     mediaRecorder.addEventListener("stop", async ()=>{
       clearInterval(timerInterval);
       timerEl.textContent="00:00 / 05:00";
+
       const webmBlob = new Blob(audioChunks,{type:'audio/webm'});
       const mp3Blob = await convertWebMtoMP3(webmBlob);
+
       const url = URL.createObjectURL(mp3Blob);
       const a = document.createElement('a'); a.href=url; a.download=`voice_${new Date().toISOString()}.mp3`; a.click();
+
       sendAudioToN8n(mp3Blob,'voice.mp3');
     });
 
@@ -83,6 +90,7 @@ recordButton.addEventListener('click', async ()=>{
   }
 });
 
+// ==== Upload ====
 uploadButton.addEventListener('click', ()=>fileInput.click());
 fileInput.addEventListener('change', async e=>{
   if(e.target.files.length>0){
@@ -95,9 +103,11 @@ fileInput.addEventListener('change', async e=>{
   }
 });
 
+// ==== Send Audio to n8n ====
 async function sendAudioToN8n(fileBlob,filename){
+  loadingEl.style.display = 'block';
   const formData = new FormData();
-  formData.append('file',fileBlob,filename);
+  formData.append('file', fileBlob, filename);
   try{
     const response = await fetch('https://pb-n8n.planbmedia.co.th/webhook/voice',{method:'POST',body:formData});
     if(!response.ok) throw new Error(`HTTP status ${response.status}`);
@@ -108,9 +118,15 @@ async function sendAudioToN8n(fileBlob,filename){
     else if(typeof data==='string'){try{const p=JSON.parse(data);message=p.text||p.output||JSON.stringify(p);}catch(e){message=data;}}
     else{message=JSON.stringify(data);}
     addMessageStructured(message,'bot');
-  }catch(err){console.error('Send audio error:',err); addMessage('Error sending to n8n: '+err.message,'bot');}
+  }catch(err){
+    console.error('Send audio error:',err);
+    addMessage('Error sending to n8n: '+err.message,'bot');
+  }finally{
+    loadingEl.style.display = 'none';
+  }
 }
 
+// ==== Chat Messages ====
 function addMessage(text,sender){
   const div=document.createElement('div');
   div.className=`message ${sender}`;
@@ -133,14 +149,14 @@ function addMessageStructured(text,sender){
   chat.scrollTop=chat.scrollHeight;
 }
 
+// ==== Convert WebM to MP3 ====
 async function convertWebMtoMP3(blob){
   const arrayBuffer = await blob.arrayBuffer();
   if(!audioContext) audioContext=new (window.AudioContext||window.webkitAudioContext)();
   const buffer = await audioContext.decodeAudioData(arrayBuffer);
   const mp3Encoder = new lamejs.Mp3Encoder(buffer.numberOfChannels, buffer.sampleRate, 128);
   const samples = buffer.getChannelData(0);
-  const mp3Data=[];
-  const blockSize=1152;
+  const mp3Data=[]; const blockSize=1152;
   for(let i=0;i<samples.length;i+=blockSize){
     const chunk = samples.subarray(i,i+blockSize);
     const mp3buf = mp3Encoder.encodeBuffer(floatTo16BitPCM(chunk));
@@ -151,14 +167,14 @@ async function convertWebMtoMP3(blob){
   return new Blob(mp3Data,{type:'audio/mp3'});
 }
 
+// ==== Convert Upload File to MP3 ====
 async function convertFileToMP3(file){
   const arrayBuffer = await file.arrayBuffer();
   if(!audioContext) audioContext=new (window.AudioContext||window.webkitAudioContext)();
   const buffer = await audioContext.decodeAudioData(arrayBuffer);
   const mp3Encoder = new lamejs.Mp3Encoder(buffer.numberOfChannels, buffer.sampleRate, 128);
   const samples = buffer.getChannelData(0);
-  const mp3Data=[];
-  const blockSize=1152;
+  const mp3Data=[]; const blockSize=1152;
   for(let i=0;i<samples.length;i+=blockSize){
     const chunk = samples.subarray(i,i+blockSize);
     const mp3buf = mp3Encoder.encodeBuffer(floatTo16BitPCM(chunk));
