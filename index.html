@@ -70,9 +70,8 @@ h2 { color:#333; margin-bottom:10px;}
 </div>
 
 <div class="note">
-  <p>**หากต้องการโหลดไฟล์เดิมซ้ำให้รีเฟรชเว็บเพจก่อน</p>
-  <p>**Guide ในการช่วย AI: ใช้คำว่า "สื่อ" เมื่อต้องการอ้างถึงสื่อ, ใช้คำว่า "แบรนด์" เมื่อต้องการอ้างถึงแบรนด์</p>
-  <p>**เนื่้อหาที่ AI ต้องการคือ ลูกค้าแบรนด์อะไร, นำเสนอสื่ออะไร, เนื้อหาการประชุม, การนัดหมายครั้งต่อไปทำอะไรและเมื่อไร</p>
+  <p>*Guide ในการช่วย AI: ใช้คำว่า "สื่อ" เมื่อต้องการอ้างถึงสื่อ, ใช้คำว่า "แบรนด์" เมื่อต้องการอ้างถึงแบรนด์</p>
+  <p>*เนื่้อหาที่ AI ต้องการคือ ลูกค้าแบรนด์อะไร, นำเสนอสื่ออะไร, เนื้อหาการประชุม, การนัดหมายครั้งต่อไปทำอะไรและเมื่อไร</p>
 </div>
 
 <div id="errorMsg"></div>
@@ -112,12 +111,15 @@ recordButton.addEventListener('click', async ()=>{
         const url = URL.createObjectURL(mp3Blob);
         const a = document.createElement('a'); a.href=url; a.download=`voice_${new Date().toISOString()}.mp3`; a.click();
         sendAudioToN8n(mp3Blob,'voice.mp3');
+        // record เสร็จแล้ว อนุญาต upload ได้อีกครั้ง
+        uploadButton.disabled = false;
       });
 
       mediaRecorder.start();
       recording=true;
       recordButton.classList.add('recording');
       recordButton.textContent='Stop';
+      uploadButton.disabled = true; // 🚫 ระหว่างอัดเสียง ห้าม upload
 
       startTime=Date.now();
       timerInterval=setInterval(()=>{
@@ -130,6 +132,7 @@ recordButton.addEventListener('click', async ()=>{
           recording=false;
           recordButton.classList.remove('recording');
           recordButton.textContent='Record';
+          uploadButton.disabled = false;
         }
       },500);
     } catch(err){
@@ -161,6 +164,7 @@ fileInput.addEventListener('change', async e=>{
 // ==== Send Audio to n8n ====
 async function sendAudioToN8n(fileBlob,filename){
   loadingEl.style.display = 'block';
+  uploadButton.disabled = true; // 🚫 disable จนกว่าจะได้ response
   const formData = new FormData();
   formData.append('file', fileBlob, filename);
   try{
@@ -178,6 +182,7 @@ async function sendAudioToN8n(fileBlob,filename){
     addMessage('Error sending to n8n: '+err.message,'bot');
   }finally{
     loadingEl.style.display = 'none';
+    uploadButton.disabled = false; // ✅ ได้ response แล้ว เปิดให้ upload ใหม่
   }
 }
 
