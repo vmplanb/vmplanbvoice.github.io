@@ -13,18 +13,28 @@
       background-color: #f9f9f9;
     }
 
+    #controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      color: white;
+    }
+
     #recordButton {
       width: 120px;
       height: 120px;
       border-radius: 50%;
-      border: none;
       background: red;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      outline: none;
       position: relative;
-      margin-bottom: 20px;
+      font-size: 16px;
     }
 
     #recordButton.recording::after {
@@ -43,6 +53,11 @@
       0% { transform: scale(1); opacity: 0.7; }
       50% { transform: scale(1.2); opacity: 0.3; }
       100% { transform: scale(1); opacity: 0.7; }
+    }
+
+    #timer {
+      font-size: 18px;
+      margin-top: 10px;
     }
 
     #chat {
@@ -87,35 +102,70 @@
   </style>
 </head>
 <body>
-  <button id="recordButton">Record</button>
+  <div id="controls">
+    <button id="recordButton">Record</button>
+    <input type="file" id="uploadAudio" accept="audio/*">
+  </div>
+  <div id="timer">00:00</div>
   <div id="chat"></div>
 
   <script>
     let mediaRecorder;
     let audioChunks = [];
     const recordButton = document.getElementById('recordButton');
+    const uploadAudio = document.getElementById('uploadAudio');
     const chat = document.getElementById('chat');
-    let recording = false;
+    const timerEl = document.getElementById('timer');
 
+    let recording = false;
+    let timerInterval;
+    let seconds = 0;
+
+    function updateTimer() {
+      seconds++;
+      const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const secs = String(seconds % 60).padStart(2, '0');
+      timerEl.textContent = `${mins}:${secs}`;
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      seconds = 0;
+      timerEl.textContent = '00:00';
+    }
+
+    // Record button click
     recordButton.addEventListener('click', async () => {
+      if (uploadAudio.files.length > 0) return; // ไม่ให้ record ถ้ามีไฟล์อัพโหลด
+
       if (!recording) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
-        
+
         mediaRecorder.addEventListener("dataavailable", event => {
           audioChunks.push(event.data);
         });
 
         mediaRecorder.addEventListener("stop", async () => {
+          resetTimer();
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const formData = new FormData();
-          formData.append('file', audioBlob, 'voice.webm');
+
+          // ดาวน์โหลดไฟล์ลงเครื่อง
+          const url = URL.createObjectURL(audioBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `voice_${Date.now()}.webm`;
+          a.click();
 
           addMessage('User sent voice message...', 'user');
 
+          // ส่งไป n8n
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'voice.webm');
+
           try {
-            const response = await fetch('https://pb-n8n.planbmedia.co.th/webhook-test/voice', {
+            const response = await fetch('https://pb-n8n.planbmedia.co.th/webhook/voice', {
               method: 'POST',
               body: formData
             });
@@ -123,7 +173,6 @@
             let data = await response.json();
             let message = '';
 
-            // ดึงข้อความจาก response
             if (Array.isArray(data) && data[0]?.output) {
               message = data[0].output;
             } else if (data.text) {
@@ -139,7 +188,6 @@
               message = JSON.stringify(data);
             }
 
-            // แสดงแบบ structured: แยกแต่ละ field label:value
             addMessageStructured(message, 'bot');
 
           } catch (err) {
@@ -152,11 +200,27 @@
         recording = true;
         recordButton.classList.add('recording');
         recordButton.textContent = 'Stop';
+
+        // เริ่มจับเวลา
+        seconds = 0;
+        timerEl.textContent = '00:00';
+        timerInterval = setInterval(updateTimer, 1000);
       } else {
         mediaRecorder.stop();
         recording = false;
         recordButton.classList.remove('recording');
         recordButton.textContent = 'Record';
+      }
+    });
+
+    // Upload file
+    uploadAudio.addEventListener('change', () => {
+      if (uploadAudio.files.length > 0) {
+        recordButton.disabled = true;
+        addMessage(`User uploaded file: ${uploadAudio.files[0].name}`, 'user');
+        // คุณสามารถส่งไฟล์ upload ไป n8n เหมือน record ได้
+      } else {
+        recordButton.disabled = false;
       }
     });
 
