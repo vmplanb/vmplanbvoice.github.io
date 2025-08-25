@@ -2,38 +2,41 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Chat + Upload + Voice</title>
+  <title>Chat + File + Voice</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; }
-    .message { margin: 5px 0; padding: 5px 10px; border-radius: 5px; display: inline-block; }
-    .user { background: #cce5ff; text-align: right; }
-    .bot { background: #e2e3e5; text-align: left; }
+    .message { margin: 5px 0; padding: 5px 10px; border-radius: 5px; display: inline-block; max-width: 80%; word-wrap: break-word; }
+    .user { background: #cce5ff; text-align: right; float: right; clear: both; }
+    .bot { background: #e2e3e5; text-align: left; float: left; clear: both; }
+    #controls { margin-top: 10px; }
+    button { margin-right: 5px; }
   </style>
 </head>
 <body>
 
-<h2>Chat with Voice & File Upload</h2>
+<h2>Chat with File & Voice</h2>
 <div id="chat"></div>
 
-<input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
-<button onclick="sendMessage()">ส่ง</button>
-<br><br>
-
-<input type="file" id="fileInput" />
-<button onclick="uploadFile()">อัพโหลดไฟล์</button>
-<br><br>
-
-<button id="recordBtn">เริ่มอัดเสียง</button>
+<div id="controls">
+  <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
+  <button id="sendBtn">ส่ง</button>
+  <br><br>
+  <input type="file" id="fileInput" />
+  <button id="uploadBtn">อัพโหลดไฟล์</button>
+  <br><br>
+  <button id="recordBtn">เริ่มอัดเสียง</button>
+</div>
 
 <script>
 const chatDiv = document.getElementById('chat');
 const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
 const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
 const recordBtn = document.getElementById('recordBtn');
 
-let mediaRecorder;
-let audioChunks = [];
+const WEBHOOK_URL = 'https://pb-n8n.planbmedia.co.th/webhook-test/voice'; // แก้เป็น Webhook ของคุณ
 
 function appendMessage(text, sender) {
   const div = document.createElement('div');
@@ -43,45 +46,65 @@ function appendMessage(text, sender) {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// ส่งข้อความไป n8n
-async function sendMessage() {
+// ฟังก์ชัน fetch รองรับ JSON / text
+async function fetchFromWebhook(formData) {
+  try {
+    const res = await fetch(WEBHOOK_URL, { method: 'POST', body: formData });
+    const contentType = res.headers.get("content-type");
+    let data;
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+        data = { reply: text };
+      }
+    }
+    return data.reply || "[ไม่มีข้อความตอบกลับ]";
+  } catch (err) {
+    console.error(err);
+    return "[เกิดข้อผิดพลาดในการเชื่อมต่อ n8n]";
+  }
+}
+
+// ส่งข้อความ
+sendBtn.addEventListener('click', async () => {
   const text = messageInput.value.trim();
   if (!text) return;
-
   appendMessage(text, 'user');
   messageInput.value = '';
 
   const formData = new FormData();
   formData.append('message', text);
 
-  const res = await fetch('https://pb-n8n.planbmedia.co.th/webhook-test/voice', { method: 'POST', body: formData });
-  const data = await res.json();
-  appendMessage(data.reply, 'bot');
-}
+  const reply = await fetchFromWebhook(formData);
+  appendMessage(reply, 'bot');
+});
 
-// อัพโหลดไฟล์ไป n8n
-async function uploadFile() {
+// อัพโหลดไฟล์
+uploadBtn.addEventListener('click', async () => {
   const file = fileInput.files[0];
   if (!file) return;
-
   appendMessage('[ส่งไฟล์: ' + file.name + ']', 'user');
 
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch('https://pb-n8n.planbmedia.co.th/webhook-test/voice', { method: 'POST', body: formData });
-  const data = await res.json();
-  appendMessage(data.reply, 'bot');
-}
+  const reply = await fetchFromWebhook(formData);
+  appendMessage(reply, 'bot');
+});
 
 // บันทึกเสียง
+let mediaRecorder;
+let audioChunks = [];
+
 recordBtn.addEventListener('click', async () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') {
-    // หยุดอัด
     mediaRecorder.stop();
     recordBtn.textContent = 'เริ่มอัดเสียง';
   } else {
-    // เริ่มอัด
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
@@ -96,9 +119,8 @@ recordBtn.addEventListener('click', async () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch('https://pb-n8n.planbmedia.co.th/webhook-test/voice', { method: 'POST', body: formData });
-      const data = await res.json();
-      appendMessage(data.reply, 'bot');
+      const reply = await fetchFromWebhook(formData);
+      appendMessage(reply, 'bot');
     };
 
     mediaRecorder.start();
@@ -109,4 +131,3 @@ recordBtn.addEventListener('click', async () => {
 
 </body>
 </html>
-
