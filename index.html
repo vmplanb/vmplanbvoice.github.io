@@ -59,10 +59,10 @@ async function fetchFromWebhook(formData) {
       try {
         data = JSON.parse(text);
       } catch(e) {
-        data = { reply: text };
+        data = { output: text };
       }
     }
-    return data.reply || "[ไม่มีข้อความตอบกลับ]";
+    return data.output || "[ไม่มีข้อความตอบกลับ]";
   } catch (err) {
     console.error(err);
     return "[เกิดข้อผิดพลาดในการเชื่อมต่อ n8n]";
@@ -79,8 +79,8 @@ sendBtn.addEventListener('click', async () => {
   const formData = new FormData();
   formData.append('message', text);
 
-  const reply = await fetchFromWebhook(formData);
-  appendMessage(reply, 'bot');
+  const output = await fetchFromWebhook(formData);
+  appendMessage(output, 'bot');
 });
 
 // อัพโหลดไฟล์
@@ -92,8 +92,8 @@ uploadBtn.addEventListener('click', async () => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const reply = await fetchFromWebhook(formData);
-  appendMessage(reply, 'bot');
+  const output = await fetchFromWebhook(formData);
+  appendMessage(output, 'bot');
 });
 
 // บันทึกเสียง
@@ -119,8 +119,8 @@ recordBtn.addEventListener('click', async () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const reply = await fetchFromWebhook(formData);
-      appendMessage(reply, 'bot');
+      const output = await fetchFromWebhook(formData);
+      appendMessage(output, 'bot');
     };
 
     mediaRecorder.start();
