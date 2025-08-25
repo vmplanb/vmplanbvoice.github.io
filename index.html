@@ -86,11 +86,9 @@
 
         mediaRecorder.addEventListener("stop", async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          // ส่งไป n8n
           const formData = new FormData();
           formData.append('file', audioBlob, 'voice.webm');
 
-          // แสดงใน chat ว่า user ส่งเสียงแล้ว
           addMessage('User sent voice message...', 'user');
 
           try {
@@ -98,8 +96,27 @@
               method: 'POST',
               body: formData
             });
-            const data = await response.json();
-            addMessage(data.text || 'No response', 'bot');
+
+            let data = await response.json();
+            let message = '';
+
+            // รองรับทุกกรณี response
+            if (Array.isArray(data) && data[0]?.json?.text) {
+              message = data[0].json.text;
+            } else if (data.text) {
+              message = data.text;
+            } else if (typeof data === 'string') {
+              try {
+                const parsed = JSON.parse(data);
+                message = parsed.text || JSON.stringify(parsed);
+              } catch (e) {
+                message = data;
+              }
+            } else {
+              message = JSON.stringify(data);
+            }
+
+            addMessage(message || 'No response', 'bot');
           } catch (err) {
             console.error(err);
             addMessage('Error sending to n8n', 'bot');
