@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat + File + Voice</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; }
-    .message { margin: 5px 0; padding: 5px 10px; border-radius: 5px; display: inline-block; max-width: 80%; word-wrap: break-word; }
-    .user { background: #cce5ff; text-align: right; float: right; clear: both; }
-    .bot { background: #e2e3e5; text-align: left; float: left; clear: both; }
-    #controls { margin-top: 10px; }
-    button { margin-right: 5px; }
-  </style>
+<meta charset="UTF-8">
+<title>Chat + File + Voice</title>
+<style>
+body { font-family: sans-serif; padding: 20px; }
+#chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; }
+.message { margin: 5px 0; padding: 5px 10px; border-radius: 5px; display: inline-block; max-width: 80%; word-wrap: break-word; }
+.user { background: #cce5ff; text-align: right; float: right; clear: both; }
+.bot { background: #e2e3e5; text-align: left; float: left; clear: both; }
+#controls { margin-top: 10px; }
+button { margin-right: 5px; }
+</style>
 </head>
 <body>
 
@@ -46,7 +46,6 @@ function appendMessage(text, sender) {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// ฟังก์ชัน fetch รองรับ JSON array ของ n8n
 async function fetchFromWebhook(formData) {
   try {
     const res = await fetch(WEBHOOK_URL, { method: 'POST', body: formData });
