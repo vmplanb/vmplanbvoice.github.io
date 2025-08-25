@@ -101,7 +101,7 @@ recordButton.addEventListener('click', async () => {
 
       const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 
-      // ดาวน์โหลดไฟล์เสียงลงเครื่อง
+      // ดาวน์โหลดไฟล์เสียง
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -135,10 +135,8 @@ recordButton.addEventListener('click', async () => {
   }
 });
 
-// อัปโหลดไฟล์เป็นทางเลือก
-uploadButton.addEventListener('click', () => {
-  fileInput.click();
-});
+// อัปโหลดไฟล์เสียงเป็นทางเลือก
+uploadButton.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', async (e) => {
   if (e.target.files.length > 0) {
@@ -154,6 +152,9 @@ async function sendAudioToN8n(fileBlob, filename) {
 
   try {
     const response = await fetch('https://pb-n8n.planbmedia.co.th/webhook/voice', { method: 'POST', body: formData });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
     let data = await response.json();
     let message = '';
 
@@ -169,8 +170,8 @@ async function sendAudioToN8n(fileBlob, filename) {
     addMessageStructured(message, 'bot');
 
   } catch(err) {
-    console.error(err);
-    addMessage('Error sending to n8n', 'bot');
+    console.error('Send audio error:', err);
+    addMessage('Error sending to n8n: ' + err.message, 'bot');
   }
 }
 
