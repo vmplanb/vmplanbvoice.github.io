@@ -36,7 +36,7 @@ const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const recordBtn = document.getElementById('recordBtn');
 
-const WEBHOOK_URL = 'https://pb-n8n.planbmedia.co.th/webhook-test/voice'; // แก้เป็น Webhook ของคุณ
+const WEBHOOK_URL = 'https://pb-n8n.planbmedia.co.th/webhook-test/voice'; // เปลี่ยนเป็น Webhook ของคุณ
 
 function appendMessage(text, sender) {
   const div = document.createElement('div');
@@ -46,23 +46,24 @@ function appendMessage(text, sender) {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// ฟังก์ชัน fetch รองรับ JSON / text
+// ฟังก์ชัน fetch รองรับ JSON array ของ n8n
 async function fetchFromWebhook(formData) {
   try {
     const res = await fetch(WEBHOOK_URL, { method: 'POST', body: formData });
     const contentType = res.headers.get("content-type");
     let data;
     if (contentType && contentType.includes("application/json")) {
-      data = await res.json();
+      const arr = await res.json(); // n8n ส่ง array
+      data = arr[0]?.output || "[ไม่มีข้อความตอบกลับ]";
     } else {
       const text = await res.text();
       try {
-        data = JSON.parse(text);
+        data = JSON.parse(text)[0]?.output || text;
       } catch(e) {
-        data = { output: text };
+        data = text;
       }
     }
-    return data.output || "[ไม่มีข้อความตอบกลับ]";
+    return data;
   } catch (err) {
     console.error(err);
     return "[เกิดข้อผิดพลาดในการเชื่อมต่อ n8n]";
@@ -79,8 +80,8 @@ sendBtn.addEventListener('click', async () => {
   const formData = new FormData();
   formData.append('message', text);
 
-  const output = await fetchFromWebhook(formData);
-  appendMessage(output, 'bot');
+  const reply = await fetchFromWebhook(formData);
+  appendMessage(reply, 'bot');
 });
 
 // อัพโหลดไฟล์
@@ -92,8 +93,8 @@ uploadBtn.addEventListener('click', async () => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const output = await fetchFromWebhook(formData);
-  appendMessage(output, 'bot');
+  const reply = await fetchFromWebhook(formData);
+  appendMessage(reply, 'bot');
 });
 
 // บันทึกเสียง
@@ -119,8 +120,8 @@ recordBtn.addEventListener('click', async () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const output = await fetchFromWebhook(formData);
-      appendMessage(output, 'bot');
+      const reply = await fetchFromWebhook(formData);
+      appendMessage(reply, 'bot');
     };
 
     mediaRecorder.start();
