@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voice Chat to n8n (MP3/WAV/OGG, Max 5min)</title>
+<title>Voice Transcription & Summarized for Sales Activity</title>
 <style>
-body { font-family: Arial; display: flex; flex-direction: column; align-items: center; margin:20px; background:#f0f2f5;}
+body { font-family: Arial; display: flex; flex-direction: row; align-items: center; margin:20px; background:#f0f2f5;}
 h2 { color:#333; margin-bottom:10px;}
-#recordButton,#uploadButton { width:140px;height:140px;border-radius:50%;border:none;font-size:16px;cursor:pointer;margin:10px;position:relative;outline:none;transition: transform 0.2s;}
+#recordButton,#uploadButton { width:120px;height:120px;border-radius:50%;border:none;font-size:16px;cursor:pointer;margin:10px;position:relative;outline:none;transition: transform 0.2s;}
 #recordButton:hover,#uploadButton:hover{transform: scale(1.05);}
 #recordButton{background:red;color:white;}
 #uploadButton{background:#4CAF50;color:white;}
-#recordButton.recording::after{content:'';position:absolute;top:-10px;left:-10px;width:160px;height:160px;border-radius:50%;border:3px solid red;animation:pulse 1s infinite;}
+#recordButton.recording::after{content:'';position:absolute;top:-10px;left:-10px;width:120px;height:120px;border-radius:50%;border:3px solid red;animation:pulse 1s infinite;}
 @keyframes pulse{0%{transform:scale(1);opacity:0.7}50%{transform:scale(1.2);opacity:0.3}100%{transform:scale(1);opacity:0.7}}
 #timer{font-size:18px;margin-bottom:10px;color:#333;}
 #loading{display:none;margin:10px;font-weight:bold;color:#555;animation:pulse 1s infinite;}
@@ -25,11 +25,16 @@ h2 { color:#333; margin-bottom:10px;}
 </head>
 <body>
 
-<h2>Voice Chat to n8n</h2>
+<h2>Voice Transcription & Summarized for Sales Activity</h2>
 <div id="timer">00:00 / 05:00</div>
 <button id="recordButton">Record</button>
 <input type="file" id="fileInput" style="display:none" accept="audio/*">
 <button id="uploadButton">Upload Audio</button>
+<div class="note">
+  <p>**หากต้องการโหลดไฟล์เดิมซ้ำให้รีเฟรชเว็บเพจก่อน</p>
+  <p>**Guide ในการช่วย AI: ใช้คำว่า"สื่อ" เมื่อต้องการอ้างถึง สื่อ, ใช้คำว่า "แบรนด์" เมื่อต้องการอ้างถึงแบรนด์</p>
+  <p>**เนื่้อหาที่ AI ต้องการคือ ลูกค้าแบรนด์อะไร, นำเสนอสื่ออะไร, เนื้อหาการประชุม, การนัดหมายครั้งต่อไปทำอะไรและเมื่อไร</p>
+</div>
 <div id="errorMsg"></div>
 <div id="loading">⏳ กำลังส่ง...</div>
 <div id="chat"></div>
