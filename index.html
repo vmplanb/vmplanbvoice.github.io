@@ -1,140 +1,141 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <title>Voice → n8n (Session + Polling)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{
-      --bg:#f3f5f7; --card:#ffffff; --text:#1f2937; --muted:#6b7280; --primary:#2563eb;
-      --good:#16a34a; --warn:#f59e0b; --danger:#dc2626;
-    }
-    body{margin:0;background:var(--bg);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;color:var(--text);}
-    .container{max-width:760px;margin:32px auto;padding:0 16px;}
-    .card{background:var(--card);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px;}
-    h1{margin:0 0 8px 0;font-size:24px;}
-    .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .pill{font-size:13px;color:#111;background:#eef2ff;border:1px solid #dbeafe;border-radius:999px;padding:6px 10px}
-    .controls{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0}
-    button{border:0;border-radius:14px;padding:14px 18px;font-weight:600;cursor:pointer}
-    .btn-rec{background:#ef4444;color:#fff}
-    .btn-stop{background:#f59e0b;color:#fff}
-    .btn-upload{background:var(--primary);color:#fff}
-    .btn-disabled{opacity:.5;pointer-events:none}
-    .timer{font-variant-numeric:tabular-nums;font-weight:700}
-    .support{color:var(--muted);font-size:13px}
-    .status{margin:8px 0 0 0;font-size:14px}
-    .status-good{color:var(--good)} .status-warn{color:var(--warn)} .status-bad{color:var(--danger)}
-    .spinner{display:none;align-items:center;gap:8px;margin-top:8px;color:var(--muted);font-weight:600}
-    .spinner-dot{width:8px;height:8px;border-radius:50%;background:#9ca3af;animation:blink 1.2s infinite ease-in-out}
-    .spinner-dot:nth-child(2){animation-delay:.2s}.spinner-dot:nth-child(3){animation-delay:.4s}
-    @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
-    .chat{margin-top:16px;display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto}
-    .msg{padding:12px 14px;border-radius:12px;line-height:1.5;white-space:pre-wrap}
-    .me{align-self:flex-end;background:#dbeafe}
-    .bot{align-self:flex-start;background:#f3f4f6}
-    .kv div{margin:3px 0}
-    .kv strong{color:#111}
-    .session{font-size:12px;color:var(--muted);user-select:all}
-    .inline-note{font-size:12px;color:var(--muted)}
-    input[type=file]{display:none}
-  </style>
+<meta charset="UTF-8" />
+<title>Voice → n8n (Session + Polling)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{
+  --bg:#f3f5f7; --card:#ffffff; --text:#1f2937; --muted:#6b7280; --primary:#2563eb;
+  --good:#16a34a; --warn:#f59e0b; --danger:#dc2626;
+}
+body{margin:0;background:var(--bg);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;color:var(--text);}
+.container{max-width:760px;margin:32px auto;padding:0 16px;}
+.card{background:var(--card);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px;}
+h1{margin:0 0 8px 0;font-size:24px;}
+.sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.pill{font-size:13px;color:#111;background:#eef2ff;border:1px solid #dbeafe;border-radius:999px;padding:6px 10px}
+.controls{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0}
+button{border:0;border-radius:14px;padding:14px 18px;font-weight:600;cursor:pointer}
+.btn-rec{background:#ef4444;color:#fff}
+.btn-stop{background:#f59e0b;color:#fff}
+.btn-upload{background:var(--primary);color:#fff}
+.btn-disabled{opacity:.5;pointer-events:none}
+.timer{font-variant-numeric:tabular-nums;font-weight:700}
+.status{margin:8px 0 0 0;font-size:14px}
+.status-good{color:var(--good)} .status-warn{color:var(--warn)} .status-bad{color:var(--danger)}
+.spinner{display:none;align-items:center;gap:8px;margin-top:8px;color:var(--muted);font-weight:600}
+.spinner-dot{width:8px;height:8px;border-radius:50%;background:#9ca3af;animation:blink 1.2s infinite ease-in-out}
+.spinner-dot:nth-child(2){animation-delay:.2s}.spinner-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.chat{margin-top:16px;display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto}
+.msg{padding:12px 14px;border-radius:12px;line-height:1.5;white-space:pre-wrap}
+.me{align-self:flex-end;background:#dbeafe}
+.bot{align-self:flex-start;background:#f3f4f6}
+.kv div{margin:3px 0}
+.kv strong{color:#111}
+.session{font-size:12px;color:var(--muted);user-select:all}
+.inline-note{font-size:12px;color:var(--muted)}
+input[type=file]{display:none}
+</style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h1>🎤 Voice → n8n (Session + Polling)</h1>
-      <div class="sub">อัดเสียงหรืออัปโหลดไฟล์ แล้วให้ n8n ประมวลผลแบบแยกผู้ใช้ด้วย <code>sessionId</code></div>
+<div class="container">
+  <div class="card">
+    <h1>🎤 Voice → n8n (Session + Polling)</h1>
+    <div class="sub">อัดเสียงหรืออัปโหลดไฟล์ แล้วให้ n8n ประมวลผลแบบแยกผู้ใช้ด้วย <code>sessionId</code></div>
 
-      <div class="row">
-        <span class="pill session" id="sessionIdPill">sessionId: —</span>
-        <span class="pill"><span class="timer" id="timer">00:00 / 05:00</span></span>
-        <span class="pill inline-note">รองรับ: MP3 / WAV / OGG (อัปโหลด)</span>
-      </div>
-
-      <div class="controls">
-        <button id="btnRecord" class="btn-rec">เริ่มอัดเสียง</button>
-        <button id="btnStop" class="btn-stop btn-disabled">หยุด & ส่ง</button>
-        <input id="fileInput" type="file" accept="audio/*" />
-        <button id="btnUpload" class="btn-upload">อัปโหลดไฟล์</button>
-      </div>
-
-      <div id="status" class="status">พร้อมใช้งาน</div>
-      <div id="spinner" class="spinner"><span class="spinner-dot"></span><span class="spinner-dot"></span><span class="spinner-dot"></span>กำลังประมวลผลจาก n8n…</div>
-
-      <div class="chat" id="chat"></div>
+    <div class="row">
+      <span class="pill session" id="sessionIdPill">sessionId: —</span>
+      <span class="pill"><span class="timer" id="timer">00:00 / 05:00</span></span>
+      <span class="pill inline-note">รองรับ: MP3 / WAV / OGG (อัปโหลด)</span>
     </div>
+
+    <div class="controls">
+      <button id="btnRecord" class="btn-rec">เริ่มอัดเสียง</button>
+      <button id="btnStop" class="btn-stop btn-disabled">หยุด & ส่ง</button>
+      <input id="fileInput" type="file" accept="audio/*" />
+      <button id="btnUpload" class="btn-upload">อัปโหลดไฟล์</button>
+    </div>
+
+    <div id="status" class="status">พร้อมใช้งาน</div>
+    <div id="spinner" class="spinner"><span class="spinner-dot"></span><span class="spinner-dot"></span><span class="spinner-dot"></span>กำลังประมวลผลจาก n8n…</div>
+
+    <div class="chat" id="chat"></div>
   </div>
+</div>
 
-  <!-- MP3 encoder สำหรับบันทึกเสียง -->
-  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
-  <script>
-    // ====== ตั้งค่า URL ของ n8n (เปลี่ยนให้ตรงของคุณ) ======
-    const UPLOAD_URL = "https://pb-n8n.planbmedia.co.th/webhook/voice";   // Webhook A (Respond Immediately)
-    const RESULT_URL = "https://pb-n8n.planbmedia.co.th/webhook/return";     // Webhook B (Polling)
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
+<script>
+const UPLOAD_URL = "https://pb-n8n.planbmedia.co.th/webhook/voice";
+const RESULT_URL = "https://pb-n8n.planbmedia.co.th/webhook/return";
 
-    // ====== สร้าง sessionId ต่อผู้ใช้/แท็บ ======
-    const sessionId = "sess-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-    document.getElementById("sessionIdPill").textContent = "sessionId: " + sessionId;
+const sessionId = "sess-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+document.getElementById("sessionIdPill").textContent = "sessionId: " + sessionId;
 
-    // ====== UI refs ======
-    const btnRecord = document.getElementById('btnRecord');
-    const btnStop = document.getElementById('btnStop');
-    const btnUpload = document.getElementById('btnUpload');
-    const fileInput = document.getElementById('fileInput');
-    const timerEl = document.getElementById('timer');
-    const statusEl = document.getElementById('status');
-    const spinnerEl = document.getElementById('spinner');
-    const chat = document.getElementById('chat');
+const btnRecord = document.getElementById('btnRecord');
+const btnStop = document.getElementById('btnStop');
+const btnUpload = document.getElementById('btnUpload');
+const fileInput = document.getElementById('fileInput');
+const timerEl = document.getElementById('timer');
+const statusEl = document.getElementById('status');
+const spinnerEl = document.getElementById('spinner');
+const chat = document.getElementById('chat');
 
-    // ====== State ======
-    const SUPPORTED_UPLOAD = ['audio/mpeg','audio/mp3','audio/wav','audio/ogg']; // อัปโหลดจำกัด
-    const MAX_SEC = 300; // 5 นาที
-    let mediaRecorder, audioChunks = [], recording = false, startTime, timerInt, pollInt;
-    let audioContext;
+const SUPPORTED_UPLOAD = ['audio/mpeg','audio/mp3','audio/wav','audio/ogg'];
+const MAX_SEC = 300;
 
-    // ====== Helpers ======
-    const setStatus = (msg, type='') => {
-      statusEl.className = 'status';
-      if(type==='good') statusEl.classList.add('status-good');
-      if(type==='warn') statusEl.classList.add('status-warn');
-      if(type==='bad')  statusEl.classList.add('status-bad');
-      statusEl.textContent = msg;
-    };
-    const showSpinner = (show) => spinnerEl.style.display = show ? 'flex' : 'none';
+let mediaRecorder, audioChunks = [], recording=false, startTime, timerInt, pollInt;
+let audioContext;
 
-    const addMsg = (html, who='me') => {
-      const div = document.createElement('div');
-      div.className = `msg ${who}`;
-      div.innerHTML = html;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    };
+const setStatus = (msg, type='') => {
+  statusEl.className = 'status';
+  if(type==='good') statusEl.classList.add('status-good');
+  if(type==='warn') statusEl.classList.add('status-warn');
+  if(type==='bad') statusEl.classList.add('status-bad');
+  statusEl.textContent = msg;
+};
 
-    // ====== แสดงข้อความแบบจัดหน้า
-    const addStructured = (text, who='bot') => {
-      if(!text) return;
-      // ถ้า text เป็น array ของ object ให้แปลงเป็น string ก่อน
-      if(Array.isArray(text)){
-        text = text.map(t=>t.output||'').join('\n');
-      }
-    
-      const lines = text.split('\n');
-      const html = lines.map(line=>{
-        const parts = line.split(':');
-        if(parts.length >= 2){
-          return `<div><strong>${parts[0].trim()}:</strong> ${parts.slice(1).join(':').trim()}</div>`;
-        }
-        return `<div>${line}</div>`;
-      }).join('');
-    
-      const box = document.createElement('div');
-      box.className = `msg ${who} kv`;
-      box.innerHTML = html;
-      chat.appendChild(box);
-      chat.scrollTop = chat.scrollHeight;
-    };
+const showSpinner = (show) => spinnerEl.style.display = show ? 'flex' : 'none';
+
+const addMsg = (html, who='me') => {
+  const div = document.createElement('div');
+  div.className = `msg ${who}`;
+  div.innerHTML = html;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+};
+
+const addStructured = (text, who='bot') => {
+  if(!text) return;
+  if(Array.isArray(text)){
+    text = text.map(t=>t.output||'').join('\n');
+  }
+  const lines = text.split('\n');
+  const html = lines.map(line=>{
+    const parts = line.split(':');
+    if(parts.length>=2){
+      return `<div><strong>${parts[0].trim()}:</strong> ${parts.slice(1).join(':').trim()}</div>`;
+    }
+    return `<div>${line}</div>`;
+  }).join('');
+  const box = document.createElement('div');
+  box.className = `msg ${who} kv`;
+  box.innerHTML = html;
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
+};
+
+const fmt = s => String(s).padStart(2,'0');
+
+btnRecord.addEventListener('click', async () => {
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
 
     // ====== onstop รวมไว้จุดเดียว ======
     mediaRecorder.onstop = async () => {
@@ -146,7 +147,7 @@
 
       addMsg(`บันทึกเสียงเสร็จ • ขนาด ~${(mp3Blob.size/1024/1024).toFixed(2)} MB`,'me');
 
-      // บันทึกไฟล์ลงเครื่อง
+      // บันทึกลงเครื่อง
       const a = document.createElement('a');
       const url = URL.createObjectURL(mp3Blob);
       a.href = url;
@@ -155,7 +156,6 @@
       a.click();
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
 
-      // ส่งไป n8n
       await sendToN8n(mp3Blob, 'recording.mp3');
     };
 
@@ -178,131 +178,111 @@
       }
     }, 250);
 
-  } catch (e) {
+  }catch(e){
     setStatus('ไม่สามารถเข้าถึงไมโครโฟนได้', 'bad');
   }
 });
 
-    btnStop.addEventListener('click', () => {
-      if(recording && mediaRecorder){
-        mediaRecorder.stop();
-        recording = false;
-        btnRecord.classList.remove('btn-disabled');
-        btnStop.classList.add('btn-disabled');
-        setStatus('กำลังแปลงไฟล์และส่งไป n8n…', 'warn');
-      }
-    });
+btnStop.addEventListener('click', () => {
+  if(recording && mediaRecorder){
+    mediaRecorder.stop();
+    recording=false;
+    btnRecord.classList.remove('btn-disabled');
+    btnStop.classList.add('btn-disabled');
+    setStatus('กำลังแปลงไฟล์และส่งไป n8n…', 'warn');
+  }
+});
 
-    // ====== Upload ======
-    btnUpload.addEventListener('click', ()=> fileInput.click());
-    fileInput.addEventListener('change', async (e)=>{
-      const f = e.target.files?.[0];
-      if(!f) return;
-      if(!SUPPORTED_UPLOAD.includes(f.type)){
-        setStatus('ไฟล์นี้ไม่รองรับ! กรุณาใช้ MP3 / WAV / OGG', 'bad');
-        return;
-      }
-      addMsg(`อัปโหลดไฟล์: ${f.name}`,'me');
-      await sendToN8n(f, f.name);
-      fileInput.value = '';
-    });
+btnUpload.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0];
+  if(!f) return;
+  if(!SUPPORTED_UPLOAD.includes(f.type)){
+    setStatus('ไฟล์นี้ไม่รองรับ! กรุณาใช้ MP3 / WAV / OGG', 'bad');
+    return;
+  }
+  addMsg(`อัปโหลดไฟล์: ${f.name}`,'me');
+  await sendToN8n(f, f.name);
+  fileInput.value = '';
+});
 
-    // ====== ส่งไป n8n (Webhook A) + Poll (Webhook B) ======
-    async function sendToN8n(blob, filename){
+async function sendToN8n(blob, filename){
+  try{
+    showSpinner(true);
+    setStatus('กำลังอัปโหลดไปยัง n8n…', 'warn');
+
+    const form = new FormData();
+    form.append('file', blob, filename);
+    form.append('sessionId', sessionId);
+
+    const res = await fetch(UPLOAD_URL, { method:'POST', body: form });
+    if(!res.ok){
+      setStatus(`อัปโหลดไม่สำเร็จ: HTTP ${res.status}`, 'bad');
+      showSpinner(false);
+      return;
+    }
+    try { await res.json(); } catch {}
+
+    setStatus('อัปโหลดสำเร็จ • เริ่มตรวจผลลัพธ์…', 'good');
+
+    let waited=0;
+    pollInt && clearInterval(pollInt);
+    pollInt = setInterval(async ()=>{
       try{
-        showSpinner(true);
-        setStatus('กำลังอัปโหลดไปยัง n8n…', 'warn');
-
-        const form = new FormData();
-        form.append('file', blob, filename);
-        form.append('sessionId', sessionId);
-
-        // Webhook A: Respond Immediately (จะได้ {"status":"processing"} ทันที)
-        const res = await fetch(UPLOAD_URL, { method:'POST', body: form });
-        if(!res.ok){
-          setStatus(`อัปโหลดไม่สำเร็จ: HTTP ${res.status}`, 'bad');
-          showSpinner(false);
+        const q = new URLSearchParams({ sessionId });
+        const r = await fetch(`${RESULT_URL}?${q.toString()}`, { method:'GET' });
+        if(r.status===204){
+          waited+=2000;
+          if(waited>=180000){ clearInterval(pollInt); showSpinner(false); setStatus('รอผลนานเกินไป ลองใหม่อีกครั้งภายหลัง','bad'); }
           return;
         }
-        // ไม่จำเป็นต้องอ่าน body ถ้ารู้ว่าเป็น processing แต่อ่านไว้เผื่อ debug
-        let ack = {};
-        try { ack = await res.json(); } catch {}
-        setStatus('อัปโหลดสำเร็จ • เริ่มตรวจผลลัพธ์…', 'good');
-
-        // เริ่ม Polling (ทุก 2 วินาที สูงสุด 3 นาที)
-        let waited = 0;
-        pollInt && clearInterval(pollInt);
-        pollInt = setInterval(async ()=>{
-          try{
-            const q = new URLSearchParams({ sessionId });
-            const r = await fetch(`${RESULT_URL}?${q.toString()}`, { method:'GET' });
-            if(r.status === 204){ // ยังไม่มีผล
-              waited += 2000;
-              if(waited >= 180000){ // 3 นาที
-                clearInterval(pollInt);
-                showSpinner(false);
-                setStatus('รอผลนานเกินไป ลองใหม่อีกครั้งภายหลัง', 'bad');
-              }
-              return;
-            }
-            if(!r.ok){
-              clearInterval(pollInt);
-              showSpinner(false);
-              setStatus(`ดึงผลลัพธ์ล้มเหลว: HTTP ${r.status}`, 'bad');
-              return;
-            }
-            const data = await r.json();
-            clearInterval(pollInt);
-            showSpinner(false);
-            setStatus('ประมวลผลสำเร็จ', 'good');
-
-            // แสดงผลแบบสวย ๆ
-            if(data?.text){
-              addStructured(data.text, 'bot');
-            }else{
-              addMsg(JSON.stringify(data, null, 2), 'bot');
-            }
-          }catch(e){
-            clearInterval(pollInt);
-            showSpinner(false);
-            setStatus('เกิดข้อผิดพลาดระหว่างดึงผลลัพธ์', 'bad');
-          }
-        }, 2000);
-
-      }catch(err){
+        if(!r.ok){ clearInterval(pollInt); showSpinner(false); setStatus(`ดึงผลลัพธ์ล้มเหลว: HTTP ${r.status}`,'bad'); return; }
+        const data = await r.json();
+        clearInterval(pollInt);
         showSpinner(false);
-        setStatus('เกิดข้อผิดพลาดขณะส่งไฟล์ไป n8n', 'bad');
+        setStatus('ประมวลผลสำเร็จ', 'good');
+        if(data?.text){ addStructured(data.text,'bot'); }
+        else{ addMsg(JSON.stringify(data,null,2),'bot'); }
+      }catch(e){
+        clearInterval(pollInt);
+        showSpinner(false);
+        setStatus('เกิดข้อผิดพลาดระหว่างดึงผลลัพธ์','bad');
       }
-    }
+    },2000);
 
-    // ====== แปลง WebM → MP3 (สำหรับเสียงที่อัดจากเบราว์เซอร์) ======
-    async function webmToMp3(webmBlob){
-      const ab = await webmBlob.arrayBuffer();
-      if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const audioBuf = await audioContext.decodeAudioData(ab);
+  }catch(err){
+    showSpinner(false);
+    setStatus('เกิดข้อผิดพลาดขณะส่งไฟล์ไป n8n','bad');
+  }
+}
 
-      const mp3encoder = new lamejs.Mp3Encoder(audioBuf.numberOfChannels, audioBuf.sampleRate, 128);
-      const samples = audioBuf.getChannelData(0);        // mono จาก ch0 (ง่ายและพอสำหรับ STT)
-      const blockSize = 1152;
-      const mp3data = [];
-      for(let i=0;i<samples.length;i+=blockSize){
-        const chunk = samples.subarray(i, i+blockSize);
-        const mp3buf = mp3encoder.encodeBuffer(floatTo16bitPCM(chunk));
-        if(mp3buf.length>0) mp3data.push(mp3buf);
-      }
-      const end = mp3encoder.flush();
-      if(end.length>0) mp3data.push(end);
-      return new Blob(mp3data, { type:'audio/mpeg' });
-    }
+async function webmToMp3(webmBlob){
+  const ab = await webmBlob.arrayBuffer();
+  if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuf = await audioContext.decodeAudioData(ab);
 
-    function floatTo16bitPCM(input){
-      const out = new Int16Array(input.length);
-      for(let i=0;i<input.length;i++){
-        let s = Math.max(-1, Math.min(1, input[i]));
-        out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-      }
-      return out;
-    }
-  </script>
+  const mp3encoder = new lamejs.Mp3Encoder(audioBuf.numberOfChannels, audioBuf.sampleRate, 128);
+  const samples = audioBuf.getChannelData(0);
+  const blockSize = 1152;
+  const mp3data = [];
+  for(let i=0;i<samples.length;i+=blockSize){
+    const chunk = samples.subarray(i,i+blockSize);
+    const mp3buf = mp3encoder.encodeBuffer(floatTo16bitPCM(chunk));
+    if(mp3buf.length>0) mp3data.push(mp3buf);
+  }
+  const end = mp3encoder.flush();
+  if(end.length>0) mp3data.push(end);
+  return new Blob(mp3data,{type:'audio/mpeg'});
+}
+
+function floatTo16bitPCM(input){
+  const out = new Int16Array(input.length);
+  for(let i=0;i<input.length;i++){
+    let s = Math.max(-1, Math.min(1, input[i]));
+    out[i] = s<0 ? s*0x8000 : s*0x7fff;
+  }
+  return out;
+}
+</script>
 </body>
 </html>
