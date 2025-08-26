@@ -135,17 +135,18 @@
       chat.appendChild(box);
       chat.scrollTop = chat.scrollHeight;
     };
-    
-    // ====== Recording ======
+
+    // ====== onstop รวมไว้จุดเดียว ======
     mediaRecorder.onstop = async () => {
       clearInterval(timerInt);
       timerEl.textContent = "00:00 / 05:00";
-      // แปลง WebM → MP3 ก่อนส่ง
+
       const webmBlob = new Blob(audioChunks, { type: 'audio/webm' });
       const mp3Blob = await webmToMp3(webmBlob);
+
       addMsg(`บันทึกเสียงเสร็จ • ขนาด ~${(mp3Blob.size/1024/1024).toFixed(2)} MB`,'me');
-    
-      // ----- บันทึกไฟล์ลงเครื่อง -----
+
+      // บันทึกไฟล์ลงเครื่อง
       const a = document.createElement('a');
       const url = URL.createObjectURL(mp3Blob);
       a.href = url;
@@ -153,52 +154,34 @@
       document.body.appendChild(a);
       a.click();
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
-    
+
+      // ส่งไป n8n
       await sendToN8n(mp3Blob, 'recording.mp3');
     };
 
-    const fmt = s => String(s).padStart(2,'0');
+    mediaRecorder.start();
+    recording = true;
+    btnRecord.classList.add('btn-disabled');
+    btnStop.classList.remove('btn-disabled');
+    setStatus('กำลังอัดเสียง… กด "หยุด & ส่ง" เพื่อส่งไป n8n', 'warn');
 
-    // ====== Recording ======
-    btnRecord.addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
-
-        mediaRecorder.onstop = async () => {
-          clearInterval(timerInt);
-          timerEl.textContent = "00:00 / 05:00";
-          // แปลง WebM → MP3 ก่อนส่ง
-          const webmBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const mp3Blob = await webmToMp3(webmBlob);
-          addMsg(`บันทึกเสียงเสร็จ • ขนาด ~${(mp3Blob.size/1024/1024).toFixed(2)} MB`,'me');
-          await sendToN8n(mp3Blob, 'recording.mp3');
-        };
-
-        mediaRecorder.start();
-        recording = true;
-        btnRecord.classList.add('btn-disabled');
-        btnStop.classList.remove('btn-disabled');
-        setStatus('กำลังอัดเสียง… กด "หยุด & ส่ง" เพื่อส่งไป n8n', 'warn');
-
-        startTime = Date.now();
-        timerInt = setInterval(()=>{
-          const elapsed = Math.floor((Date.now()-startTime)/1000);
-          timerEl.textContent = `${fmt(Math.floor(elapsed/60))}:${fmt(elapsed%60)} / 05:00`;
-          if(elapsed >= MAX_SEC){
-            mediaRecorder.stop();
-            recording=false;
-            btnRecord.classList.remove('btn-disabled');
-            btnStop.classList.add('btn-disabled');
-            setStatus('ครบ 5 นาทีแล้ว กำลังส่งไฟล์…', 'warn');
-          }
-        }, 250);
-      } catch (e) {
-        setStatus('ไม่สามารถเข้าถึงไมโครโฟนได้', 'bad');
+    startTime = Date.now();
+    timerInt = setInterval(()=>{
+      const elapsed = Math.floor((Date.now()-startTime)/1000);
+      timerEl.textContent = `${fmt(Math.floor(elapsed/60))}:${fmt(elapsed%60)} / 05:00`;
+      if(elapsed >= MAX_SEC){
+        mediaRecorder.stop();
+        recording=false;
+        btnRecord.classList.remove('btn-disabled');
+        btnStop.classList.add('btn-disabled');
+        setStatus('ครบ 5 นาทีแล้ว กำลังส่งไฟล์…', 'warn');
       }
-    });
+    }, 250);
+
+  } catch (e) {
+    setStatus('ไม่สามารถเข้าถึงไมโครโฟนได้', 'bad');
+  }
+});
 
     btnStop.addEventListener('click', () => {
       if(recording && mediaRecorder){
