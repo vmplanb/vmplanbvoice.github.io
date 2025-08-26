@@ -99,32 +99,11 @@ let audioContext = null;
 let audioInitialized = false;
 
 const initAudioContext = async () => {
-  // ตรวจสอบว่า audioContext มีอยู่แล้วหรือไม่ และสถานะเป็น suspended
-  if (audioContext && audioContext.state === 'suspended') {
-    try {
-      await audioContext.resume();
-      audioInitialized = true;
-      initWarning.style.display = 'none';
-      setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
-      return true;
-    } catch (e) {
-      console.error('Audio context resume failed:', e);
-      setStatus('ไม่สามารถกลับมาใช้ระบบเสียงได้', 'bad');
-      return false;
-    }
-  }
-
-  // ถ้ายังไม่มี audioContext หรือสถานะเป็น closed ให้สร้างใหม่
+  // หาก audioContext ยังไม่มีหรือถูกปิดไปแล้ว ให้สร้างใหม่
   if (!audioContext || audioContext.state === 'closed') {
     try {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-      audioInitialized = true;
-      initWarning.style.display = 'none';
-      setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
-      return true;
+      console.log('AudioContext created.');
     } catch (e) {
       console.error('Audio context initialization failed:', e);
       setStatus('ไม่สามารถเริ่มระบบเสียงได้', 'bad');
@@ -132,14 +111,23 @@ const initAudioContext = async () => {
     }
   }
 
-  // ถ้า audioContext มีอยู่แล้วและพร้อมใช้งาน
-  if (audioContext.state === 'running') {
-    initWarning.style.display = 'none';
-    setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
-    return true;
+  // หาก audioContext อยู่ในสถานะ suspended ให้ resume
+  if (audioContext.state === 'suspended') {
+    try {
+      await audioContext.resume();
+      console.log('AudioContext resumed.');
+    } catch (e) {
+      console.error('Audio context resume failed:', e);
+      setStatus('ไม่สามารถกลับมาใช้ระบบเสียงได้', 'bad');
+      return false;
+    }
   }
 
-  return false;
+  // หลังจากนี้ audioContext จะพร้อมใช้งาน
+  audioInitialized = true;
+  initWarning.style.display = 'none';
+  setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
+  return true;
 };
 
 const setStatus = (msg,type='') => {
