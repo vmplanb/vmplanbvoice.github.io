@@ -99,7 +99,23 @@ let audioContext = null;
 let audioInitialized = false;
 
 const initAudioContext = async () => {
-  if (!audioInitialized) {
+  // ตรวจสอบว่า audioContext มีอยู่แล้วหรือไม่ และสถานะเป็น suspended
+  if (audioContext && audioContext.state === 'suspended') {
+    try {
+      await audioContext.resume();
+      audioInitialized = true;
+      initWarning.style.display = 'none';
+      setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
+      return true;
+    } catch (e) {
+      console.error('Audio context resume failed:', e);
+      setStatus('ไม่สามารถกลับมาใช้ระบบเสียงได้', 'bad');
+      return false;
+    }
+  }
+
+  // ถ้ายังไม่มี audioContext หรือสถานะเป็น closed ให้สร้างใหม่
+  if (!audioContext || audioContext.state === 'closed') {
     try {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       if (audioContext.state === 'suspended') {
@@ -115,7 +131,15 @@ const initAudioContext = async () => {
       return false;
     }
   }
-  return true;
+
+  // ถ้า audioContext มีอยู่แล้วและพร้อมใช้งาน
+  if (audioContext.state === 'running') {
+    initWarning.style.display = 'none';
+    setStatus('ระบบเสียงพร้อมใช้งาน', 'good');
+    return true;
+  }
+
+  return false;
 };
 
 const setStatus = (msg,type='') => {
