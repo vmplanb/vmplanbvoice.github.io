@@ -219,37 +219,56 @@
         // Polling output ล่าสุด
         let waited=0;
         pollInt && clearInterval(pollInt);
-        pollInt=setInterval(async()=>{
-          try{
-            const q = new URLSearchParams({sessionId:currentSessionId});
-            const r = await fetch(`${RESULT_URL}?${q.toString()}`,{method:'GET'});
-            if(r.status===204){
-              waited+=2000;
-              if(waited>=180000){
+        pollInt = setInterval(async () => {
+          try {
+            const q = new URLSearchParams({ sessionId: currentSessionId });
+            const r = await fetch(`${RESULT_URL}?${q.toString()}`, { method: 'GET' });
+        
+            if (r.status === 204) {
+              // ยังไม่มีผลลัพธ์
+              waited += 2000;
+              if (waited >= 180000) {
                 clearInterval(pollInt);
                 showSpinner(false);
                 setStatus('รอผลนานเกินไป ลองใหม่อีกครั้งภายหลัง','bad');
               }
               return;
             }
-            if(!r.ok){
+        
+            if (!r.ok) {
               clearInterval(pollInt);
               showSpinner(false);
               setStatus(`ดึงผลลัพธ์ล้มเหลว: HTTP ${r.status}`,'bad');
               return;
             }
-            const data = await r.json();
+        
+            // ตรวจสอบ Content-Type ก่อน parse
+            const contentType = r.headers.get('content-type') || '';
+            let data;
+            if (contentType.includes('application/json')) {
+              data = await r.json();
+            } else {
+              const text = await r.text();
+              try {
+                data = JSON.parse(text); // ลอง parse เป็น JSON
+              } catch (err) {
+                data = { output: text }; // ถ้าไม่ใช่ JSON ใช้เป็นข้อความธรรมดา
+              }
+            }
+        
             clearInterval(pollInt);
             showSpinner(false);
             setStatus('ประมวลผลสำเร็จ','good');
-            if(data?.output) addStructured(data.output,'bot');
-            else addMsg(JSON.stringify(data,null,2),'bot');
-          }catch(e){
+            if (data?.output) addStructured(data.output,'bot');
+            else addMsg(JSON.stringify(data, null, 2),'bot');
+        
+          } catch (e) {
             clearInterval(pollInt);
             showSpinner(false);
             setStatus('เกิดข้อผิดพลาดระหว่างดึงผลลัพธ์','bad');
           }
-        },2000);
+        }, 2000);
+
       }catch(err){
         showSpinner(false);
         setStatus('เกิดข้อผิดพลาดขณะส่งไฟล์ไป n8n','bad');
