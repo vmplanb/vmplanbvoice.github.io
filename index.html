@@ -112,12 +112,16 @@
       chat.scrollTop = chat.scrollHeight;
     };
 
+    // ====== แสดงผลแบบสวยงาม (เฉพาะ output) ======
     const addStructured = (text, who='bot') => {
       const lines = String(text || '').split('\n');
       const html = lines.map(line=>{
         const parts = line.split(':');
         if(parts.length>=2){
-          return `<div><strong>${parts[0].trim()}:</strong> ${parts.slice(1).join(':').trim()}</div>`;
+          const label = parts[0].trim();
+          const value = parts.slice(1).join(':').trim();
+          // จัดบรรทัด: label ขึ้นบรรทัดใหม่, value ใต้ label
+          return `<div><strong>${label}:</strong><br>${value}</div>`;
         }
         return `<div>${line}</div>`;
       }).join('');
@@ -127,6 +131,7 @@
       chat.appendChild(box);
       chat.scrollTop = chat.scrollHeight;
     };
+
 
     const fmt = s => String(s).padStart(2,'0');
 
