@@ -71,8 +71,8 @@
   <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
   <script>
     // ====== ตั้งค่า URL ของ n8n (เปลี่ยนให้ตรงของคุณ) ======
-    const UPLOAD_URL = "https://pb-n8n.planbmedia.co.th/webhook-test/voice";   // Webhook A (Respond Immediately)
-    const RESULT_URL = "https://pb-n8n.planbmedia.co.th/webhook-test/return";     // Webhook B (Polling)
+    const UPLOAD_URL = "https://pb-n8n.planbmedia.co.th/webhook/voice";   // Webhook A (Respond Immediately)
+    const RESULT_URL = "https://pb-n8n.planbmedia.co.th/webhook/return";     // Webhook B (Polling)
 
     // ====== สร้าง sessionId ต่อผู้ใช้/แท็บ ======
     const sessionId = "sess-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
