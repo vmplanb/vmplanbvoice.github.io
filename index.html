@@ -112,20 +112,49 @@
       chat.scrollTop = chat.scrollHeight;
     };
 
+    // ====== แสดงข้อความแบบจัดหน้า
     const addStructured = (text, who='bot') => {
-      const lines = String(text || '').split('\n');
+      if(!text) return;
+      // ถ้า text เป็น array ของ object ให้แปลงเป็น string ก่อน
+      if(Array.isArray(text)){
+        text = text.map(t=>t.output||'').join('\n');
+      }
+    
+      const lines = text.split('\n');
       const html = lines.map(line=>{
         const parts = line.split(':');
-        if(parts.length>=2){
+        if(parts.length >= 2){
           return `<div><strong>${parts[0].trim()}:</strong> ${parts.slice(1).join(':').trim()}</div>`;
         }
         return `<div>${line}</div>`;
       }).join('');
+    
       const box = document.createElement('div');
       box.className = `msg ${who} kv`;
       box.innerHTML = html;
       chat.appendChild(box);
       chat.scrollTop = chat.scrollHeight;
+    };
+    
+    // ====== Recording ======
+    mediaRecorder.onstop = async () => {
+      clearInterval(timerInt);
+      timerEl.textContent = "00:00 / 05:00";
+      // แปลง WebM → MP3 ก่อนส่ง
+      const webmBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const mp3Blob = await webmToMp3(webmBlob);
+      addMsg(`บันทึกเสียงเสร็จ • ขนาด ~${(mp3Blob.size/1024/1024).toFixed(2)} MB`,'me');
+    
+      // ----- บันทึกไฟล์ลงเครื่อง -----
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(mp3Blob);
+      a.href = url;
+      a.download = 'recording.mp3';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
+    
+      await sendToN8n(mp3Blob, 'recording.mp3');
     };
 
     const fmt = s => String(s).padStart(2,'0');
