@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Voice → n8n (Session + Polling)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
 :root{
   --bg:#f3f5f7; --card:#ffffff; --text:#1f2937; --muted:#6b7280; --primary:#2563eb;
@@ -44,7 +44,7 @@ input[type=file]{display:none}
 <div class="container">
   <div class="card">
     <h1>🎤 Voice → n8n (Session + Polling)</h1>
-    <div class="sub">อัดเสียงหรืออัปโหลดไฟล์ แล้วให้ n8n ประมวลผลแบบแยกผู้ใช้ด้วย <code>sessionId</code></div>
+    <div class="sub">อัดเสียงหรืออัปโหลดไฟล์ แล้วให้ n8n ประมวลผล <code>sessionId</code></div>
 
     <div class="row">
       <span class="pill session" id="sessionIdPill">sessionId: —</span>
@@ -61,7 +61,6 @@ input[type=file]{display:none}
 
     <div id="status" class="status">พร้อมใช้งาน</div>
     <div id="spinner" class="spinner"><span class="spinner-dot"></span><span class="spinner-dot"></span><span class="spinner-dot"></span>กำลังประมวลผลจาก n8n…</div>
-
     <div class="chat" id="chat"></div>
   </div>
 </div>
@@ -70,8 +69,7 @@ input[type=file]{display:none}
 <script>
 const UPLOAD_URL = "https://pb-n8n.planbmedia.co.th/webhook/voice";
 const RESULT_URL = "https://pb-n8n.planbmedia.co.th/webhook/return";
-
-const sessionId = "sess-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const sessionId = "sess-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
 document.getElementById("sessionIdPill").textContent = "sessionId: " + sessionId;
 
 const btnRecord = document.getElementById('btnRecord');
@@ -85,19 +83,17 @@ const chat = document.getElementById('chat');
 
 const SUPPORTED_UPLOAD = ['audio/mpeg','audio/mp3','audio/wav','audio/ogg'];
 const MAX_SEC = 300;
-let mediaRecorder, audioChunks = [], recording = false, startTime, timerInt, pollInt;
-
-// ====== สร้าง AudioContext ตั้งแต่โหลดหน้าเว็บ ======
+let mediaRecorder, audioChunks=[], recording=false, startTime, timerInt, pollInt;
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-const setStatus = (msg,type='') => {
+// Helpers
+const setStatus = (msg,type='')=>{
   statusEl.className='status';
   if(type==='good') statusEl.classList.add('status-good');
   if(type==='warn') statusEl.classList.add('status-warn');
   if(type==='bad') statusEl.classList.add('status-bad');
   statusEl.textContent=msg;
 };
-
 const showSpinner = show => spinnerEl.style.display = show?'flex':'none';
 
 const addMsg = (html,who='me')=>{
@@ -108,70 +104,55 @@ const addMsg = (html,who='me')=>{
   chat.scrollTop = chat.scrollHeight;
 };
 
-// ====== แสดงข้อความแบบจัดหน้า ======
-const addStructured = (data, who='bot') => {
-  if(!data) return;
-  if(Array.isArray(data)){
-    data.forEach(item=>{
-      if(item.output){
-        addStructured(item.output, who);
-      }
-    });
-    return;
-  }
-  const lines = data.split('\n');
-  const html = lines.map(line=>{
-    if(!line.trim()) return '';
-    const idx = line.indexOf(':');
-    if(idx>-1){
-      return `<div><strong>${line.slice(0,idx+1)}</strong> ${line.slice(idx+1).trim()}</div>`;
-    } else return `<div>${line}</div>`;
-  }).join('');
+const addStructured = text=>{
+  if(!text) return;
+  if(Array.isArray(text)) text = text.map(t=>t.output||'').join('\n');
+  const lines = text.split('\n');
+  const html = lines.map(line=>line.includes(':')?`<div><strong>${line.split(':')[0].trim()}:</strong> ${line.split(':').slice(1).join(':').trim()}</div>`:`<div>${line}</div>`).join('');
   const box=document.createElement('div');
-  box.className=`msg ${who} kv`;
-  box.innerHTML = html;
+  box.className='msg bot kv';
+  box.innerHTML=html;
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
 };
 
-const fmt = s => String(s).padStart(2,'0');
+// Recording
+const fmt=s=>String(s).padStart(2,'0');
 
-// ====== เริ่มอัดเสียง ======
-btnRecord.addEventListener('click', async ()=>{
+btnRecord.addEventListener('click',async()=>{
   try{
     const stream = await navigator.mediaDevices.getUserMedia({audio:true});
     mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) audioChunks.push(e.data); };
+    audioChunks=[];
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0) audioChunks.push(e.data);};
 
-    mediaRecorder.onstop = async ()=>{
+    mediaRecorder.onstop=async()=>{
       clearInterval(timerInt);
       timerEl.textContent="00:00 / 05:00";
-      const webmBlob = new Blob(audioChunks,{type:'audio/webm'});
-      const mp3Blob = await webmToMp3(webmBlob);
+      const webmBlob=new Blob(audioChunks,{type:'audio/webm'});
+      const mp3Blob=await webmToMp3(webmBlob);
       addMsg(`บันทึกเสียงเสร็จ • ขนาด ~${(mp3Blob.size/1024/1024).toFixed(2)} MB`,'me');
 
-      // บันทึกลงเครื่อง
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(mp3Blob);
-      a.download = 'recording.mp3';
-      document.body.appendChild(a);
+      // Save locally
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(mp3Blob);
+      a.download='recording.mp3';
       a.click();
-      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },100);
+      setTimeout(()=>{URL.revokeObjectURL(a.href);},100);
 
       await sendToN8n(mp3Blob,'recording.mp3');
     };
 
     mediaRecorder.start();
-    recording = true;
+    recording=true;
     btnRecord.classList.add('btn-disabled');
     btnStop.classList.remove('btn-disabled');
     setStatus('กำลังอัดเสียง… กด "หยุด & ส่ง" เพื่อส่งไป n8n','warn');
 
-    startTime = Date.now();
-    timerInt = setInterval(()=>{
-      const elapsed = Math.floor((Date.now()-startTime)/1000);
-      timerEl.textContent = `${fmt(Math.floor(elapsed/60))}:${fmt(elapsed%60)} / 05:00`;
+    startTime=Date.now();
+    timerInt=setInterval(()=>{
+      const elapsed=Math.floor((Date.now()-startTime)/1000);
+      timerEl.textContent=`${fmt(Math.floor(elapsed/60))}:${fmt(elapsed%60)} / 05:00`;
       if(elapsed>=MAX_SEC){
         mediaRecorder.stop();
         recording=false;
@@ -181,13 +162,10 @@ btnRecord.addEventListener('click', async ()=>{
       }
     },250);
 
-  }catch(e){
-    setStatus('ไม่สามารถเข้าถึงไมโครโฟนได้','bad');
-  }
+  }catch(e){setStatus('ไม่สามารถเข้าถึงไมโครโฟนได้','bad');}
 });
 
-// ====== หยุดอัดเสียง ======
-btnStop.addEventListener('click', ()=>{
+btnStop.addEventListener('click',()=>{
   if(recording && mediaRecorder){
     mediaRecorder.stop();
     recording=false;
@@ -197,73 +175,71 @@ btnStop.addEventListener('click', ()=>{
   }
 });
 
-// ====== Upload ======
 btnUpload.addEventListener('click',()=>fileInput.click());
-fileInput.addEventListener('change',async e=>{
-  const f = e.target.files?.[0];
+fileInput.addEventListener('change',async(e)=>{
+  const f=e.target.files?.[0];
   if(!f) return;
   if(!SUPPORTED_UPLOAD.includes(f.type)){
-    setStatus('ไฟล์นี้ไม่รองรับ! กรุณาใช้ MP3 / WAV / OGG','bad');
-    return;
+    setStatus('ไฟล์นี้ไม่รองรับ! ใช้ MP3 / WAV / OGG','bad'); return;
   }
   addMsg(`อัปโหลดไฟล์: ${f.name}`,'me');
   await sendToN8n(f,f.name);
   fileInput.value='';
 });
 
-// ====== ส่งไฟล์ + Poll ======
-async function sendToN8n(blob, filename){
+// Send to n8n + polling
+async function sendToN8n(blob,filename){
   try{
     showSpinner(true);
     setStatus('กำลังอัปโหลดไปยัง n8n…','warn');
-    const form = new FormData();
+    const form=new FormData();
     form.append('file',blob,filename);
     form.append('sessionId',sessionId);
+
     const res = await fetch(UPLOAD_URL,{method:'POST',body:form});
-    if(!res.ok){ setStatus(`อัปโหลดไม่สำเร็จ: HTTP ${res.status}`,'bad'); showSpinner(false); return; }
+    if(!res.ok){ setStatus(`อัปโหลดไม่สำเร็จ: HTTP ${res.status}`,'bad'); showSpinner(false); return;}
     setStatus('อัปโหลดสำเร็จ • เริ่มตรวจผลลัพธ์…','good');
 
     let waited=0;
     pollInt && clearInterval(pollInt);
-    pollInt=setInterval(async ()=>{
+    pollInt=setInterval(async()=>{
       try{
         const q=new URLSearchParams({sessionId});
         const r=await fetch(`${RESULT_URL}?${q.toString()}`,{method:'GET'});
-        if(r.status===204){ waited+=2000; if(waited>=180000){clearInterval(pollInt); showSpinner(false); setStatus('รอผลนานเกินไป ลองใหม่อีกครั้งภายหลัง','bad');} return; }
-        if(!r.ok){ clearInterval(pollInt); showSpinner(false); setStatus(`ดึงผลลัพธ์ล้มเหลว: HTTP ${r.status}`,'bad'); return; }
-        const data = await r.json();
+        if(r.status===204){ waited+=2000; if(waited>=180000){ clearInterval(pollInt); showSpinner(false); setStatus('รอผลนานเกินไป ลองใหม่อีกครั้ง','bad'); } return;}
+        if(!r.ok){ clearInterval(pollInt); showSpinner(false); setStatus(`ดึงผลลัพธ์ล้มเหลว: HTTP ${r.status}`,'bad'); return;}
+        const data=await r.json();
         clearInterval(pollInt); showSpinner(false); setStatus('ประมวลผลสำเร็จ','good');
-        if(data?.text) addStructured(data.text,'bot');
-        else addMsg(JSON.stringify(data,null,2),'bot');
+        addStructured(data?.text || []);
       }catch(e){ clearInterval(pollInt); showSpinner(false); setStatus('เกิดข้อผิดพลาดระหว่างดึงผลลัพธ์','bad'); }
     },2000);
 
-  }catch(err){ showSpinner(false); setStatus('เกิดข้อผิดพลาดขณะส่งไฟล์ไป n8n','bad'); }
+  }catch(err){ showSpinner(false); setStatus('เกิดข้อผิดพลาดขณะส่งไฟล์ไป n8n','bad');}
 }
 
-// ====== WebM → MP3 ======
+// WebM → MP3
 async function webmToMp3(webmBlob){
-  const ab = await webmBlob.arrayBuffer();
-  const audioBuf = await audioContext.decodeAudioData(ab);
-  const mp3encoder = new lamejs.Mp3Encoder(audioBuf.numberOfChannels,audioBuf.sampleRate,128);
-  const samples = audioBuf.getChannelData(0);
-  const blockSize = 1152;
-  const mp3data = [];
+  const ab=await webmBlob.arrayBuffer();
+  const audioBuf=await audioContext.decodeAudioData(ab);
+  const mp3encoder=new lamejs.Mp3Encoder(audioBuf.numberOfChannels,audioBuf.sampleRate,128);
+  const samples=audioBuf.getChannelData(0);
+  const blockSize=1152;
+  const mp3data=[];
   for(let i=0;i<samples.length;i+=blockSize){
-    const chunk = samples.subarray(i,i+blockSize);
-    const mp3buf = mp3encoder.encodeBuffer(floatTo16bitPCM(chunk));
+    const chunk=samples.subarray(i,i+blockSize);
+    const mp3buf=mp3encoder.encodeBuffer(floatTo16bitPCM(chunk));
     if(mp3buf.length>0) mp3data.push(mp3buf);
   }
-  const end = mp3encoder.flush();
+  const end=mp3encoder.flush();
   if(end.length>0) mp3data.push(end);
   return new Blob(mp3data,{type:'audio/mpeg'});
 }
 
 function floatTo16bitPCM(input){
-  const out = new Int16Array(input.length);
+  const out=new Int16Array(input.length);
   for(let i=0;i<input.length;i++){
-    let s = Math.max(-1, Math.min(1, input[i]));
-    out[i] = s<0 ? s*0x8000 : s*0x7fff;
+    let s=Math.max(-1,Math.min(1,input[i]));
+    out[i]=s<0?s*0x8000:s*0x7fff;
   }
   return out;
 }
